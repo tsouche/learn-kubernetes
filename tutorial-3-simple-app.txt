@@ -544,7 +544,7 @@ The url structure is self explicit:
 
 
 4.5 - View the container logs
-==============================
+=============================
 
 Anything that the application would normally send to STDOUT becomes logs for 
 the container within the Pod. We can retrieve these logs using the kubectl 
@@ -636,12 +636,12 @@ To close your container connection type "exit".
 
 
 
-3.5 - Expose Your App Publicly
-==============================
+5 - Expose Your App Publicly
+============================
 
 
-3.5.1 - Overview of Kubernetes Services
-=======================================
+5.1 - Overview of Kubernetes Services
+=====================================
 
 Kubernetes Pods are mortal. Pods in fact have a lifecycle. When a worker node 
 dies, the Pods running on the Node are also lost. A ReplicaSet might then 
@@ -697,8 +697,8 @@ manually map a Service to specific endpoints. Another possibility why there
 may be no selector is you are strictly using type: ExternalName.
 
 
-3.5.2 - Services and Labels
-===========================
+5.2 - Services and Labels
+=========================
 
 (image: "expose your app - 1")
 
@@ -723,8 +723,8 @@ modified at any time. Let's expose our application now using a Service and
 apply some labels.
 
 
-3.5.3 - Create a new service
-============================
+5.3 - Create a new service
+==========================
 
 
 Let’s verify that our application is running. We’ll use the kubectl get 
@@ -817,67 +817,134 @@ tso@laptop:~$
 And we get a response from the server. The Service is exposed.
 
 
-3.5.4 - Using labels
+5.4 - Using labels
 ====================
 
 The Deployment created automatically a label for our Pod. With describe 
-deployment command you can see the name of the label:
+deployment command, you can see the name of the label:
 
-$ kubectl describe deployment
+tso@laptop:~$ kubectl describe deployment
+Name:                   hello
+Namespace:              default
+CreationTimestamp:      Wed, 01 Jan 2020 09:11:01 +0100
+Labels:                 app=hello
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=hello
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=hello
+  Containers:
+   node-hello:
+    Image:        gcr.io/google-samples/node-hello:1.0
+    Port:         <none>
+    Host Port:    <none>
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   hello-7747bc55f (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  21m   deployment-controller  Scaled up replica set hello-7747bc55f to 1
 
-Let’s use this label to query our list of Pods. We’ll use the kubectl get pods 
-command with -l as a parameter, followed by the label values:
 
-$ kubectl get pods -l run=kubernetes-bootcamp
+As you can see, the label is 'app' and its value is 'helloe', so it appears as 
+'app=hello'. Let’s use this label to query our list of Pods. We’ll use the 
+kubectl get pods command with -l as a parameter, followed by the label values:
+
+tso@laptop:~$ kubectl get pods -l app=hello
+NAME                    READY   STATUS    RESTARTS   AGE
+hello-7747bc55f-87lpj   1/1     Running   0          23m
 
 You can do the same to list the existing services:
 
-$ kubectl get services -l run=kubernetes-bootcamp
+tso@laptop:~$ kubectl get services -l app=hello
+NAME    TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+hello   NodePort   10.103.209.167   <none>        8080:31000/TCP   6m
 
 Get the name of the Pod and store it in the POD_NAME environment variable:
 
-$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
-echo Name of the Pod: $POD_NAME
+tso@laptop:~$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+tso@laptop:~$ echo $POD_NAME
+hello-7747bc55f-87lpj
 
 To apply a new label we use the label command followed by the object type, 
 object name and the new label:
 
-$ kubectl label pod $POD_NAME app=v1
+tso@laptop:~$ kubectl label pod $POD_NAME app=v1
+error: 'app' already has a value (hello), and --overwrite is false
+tso@laptop:~$ kubectl label pod $POD_NAME version=v1
+pod/hello-7747bc55f-87lpj labeled
+
+This is interesting: you cannot create a label which alerady exists (here the 
+label is 'app'), so you either modify it or you create a new label (and you can 
+apply any number of label on any Kubernetes resource), so we create the label
+'version'.
 
 This will apply a new label to our Pod (we pinned the application version to 
 the Pod), and we can check it with the describe pod command:
 
-$ kubectl describe pods $POD_NAME
+tso@laptop:~$ kubectl describe pods $POD_NAME
+Name:         hello-7747bc55f-87lpj
+Namespace:    default
+Priority:     0
+Node:         newname-worker2/172.17.0.3
+Start Time:   Wed, 01 Jan 2020 09:11:01 +0100
+Labels:       app=hello
+              pod-template-hash=7747bc55f
+              version=v1
+Annotations:  <none>
+Status:       Running
+IP:           10.244.1.2
+...
 
-We see here that the label is attached now to our Pod. And we can query now 
-the list of pods using the new label:
+We see here that both 'app' and 'version' labels are attached now to our Pod 
+(as well as another label generated by Kubernetes for its own usage). And we 
+can query now the list of pods using the new label:
 
-$ kubectl get pods -l app=v1
+tso@laptop:~$ kubectl get pods -l version=v1
+NAME                    READY   STATUS    RESTARTS   AGE
+hello-7747bc55f-87lpj   1/1     Running   0          32m
 
 And we see the Pod.
 
 
-3.5.5 - Deleting a service
-=========================
+5.5 - Deleting a service
+========================
 
 To delete Services you can use the delete service command. Labels can be used 
 also here:
 
-$ kubectl delete service -l run=kubernetes-bootcamp
+tso@laptop:~$ kubectl delete service -l app=hello
+service "hello" deleted
 
 Confirm that the service is gone:
 
-$ kubectl get services
+tso@laptop:~$ kubectl get services
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   41m
 
 This confirms that our Service was removed. To confirm that route is not 
 exposed anymore you can curl the previously exposed IP and port:
 
-$ curl $(minikube ip):$NODE_PORT
+tso@laptop:~$ curl $ENDPOINT:$NODE_PORT
+curl: (7) Failed to connect to 172.17.0.4 port 31000: Connection refused
 
 This proves that the app is not reachable anymore from outside of the cluster. 
 You can confirm that the app is still running with a curl inside the pod:
 
-$ kubectl exec -ti $POD_NAME curl localhost:8080
+tso@laptop:~$ kubectl exec -ti $POD_NAME curl localhost:8080
+Hello Kubernetes!
+tso@laptop:~$ 
 
 We see here that the application is up. This is because the Deployment is 
 managing the application. To shut down the application, you would need to 
@@ -885,12 +952,12 @@ delete the Deployment as well.
 
 
 
-3.6 - Scale Your App
-====================
+6 - Scale Your App
+==================
 
 
-3.6.1 - Explanation - Scaling an application
-============================
+6.1 - Explanation - Scaling an application
+==========================================
 
 In the previous modules we created a Deployment, and then exposed it publicly 
 via a Service. The Deployment created only one Pod for running our application. 
