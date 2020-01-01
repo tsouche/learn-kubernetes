@@ -5,23 +5,25 @@
 #############################################################################
 
 
-In this section, you will build and deploy a simple, multi-tier web application 
-- a PHP Guestbook application with Redis - using Kubernetes and Docker. This 
-example consists of the following components:
+In this section, you will build and deploy a simple, multi-tier web 
+application - a PHP Guestbook application with Redis - using Kubernetes and 
+Docker. This example consists of the following components:
 
     - A single-instance Redis master to store guestbook entries
     - Multiple replicated Redis instances to serve reads
     - Multiple web frontend instances
 
 
-4.1 - Start up the Redis Master
-===============================
+1 - Start up the Redis Master
+=============================
+
 
 The guestbook application uses Redis to store its data. It writes its data to 
 a Redis master instance and reads data from multiple Redis slave instances.
 
-4.1.1 - Creating the Redis Master Deployment
-============================================
+
+1.1 - Creating the Redis Master Deployment
+==========================================
 
 The manifest file, included below, specifies a Deployment controller that runs 
 a single replica Redis master Pod.
@@ -62,24 +64,49 @@ Launch a terminal window in the directory you downloaded the manifest files.
 
 Apply the Redis Master Deployment from the redis-master-deployment.yaml file:
 
-$ kubectl apply -f https://k8s.io/examples/application/guestbook/redis-master-deployment.yaml
+tso@laptop:~$ cd /projects/lean-kubernetes/app-guestbook
+tso@laptop:~$ kubectl apply -f redis-master-deployment.yaml
+kubectl apply -f redis-master-deployment.yaml
 
 Query the list of Pods to verify that the Redis Master Pod is running:
 
-$ kubectl get pods
-NAME                            READY     STATUS    RESTARTS   AGE
-redis-master-1068406935-3lswp   1/1       Running   0          28s
+tso@laptop:~$ kubectl get pods
+NAME                            READY   STATUS    RESTARTS   AGE    IP           NODE              NOMINATED NODE   READINESS GATES
+redis-master-7db7f6579f-8dbh8   1/1     Running   0          39s    10.244.1.8   newyear-worker    <none>           <none>
 
 Run the following command to view the logs from the Redis Master Pod:
 
-$ kubectl logs -f POD-NAME
+$ POD_NAME=redis-master-7db7f6579f-8dbh8
+$ kubectl logs -f $POD_NAME
+                _._                                                  
+           _.-``__ ''-._                                             
+      _.-``    `.  `_.  ''-._           Redis 2.8.19 (00000000/0) 64 bit
+  .-`` .-```.  ```\/    _.,_ ''-._                                   
+ (    '      ,       .-`  | `,    )     Running in stand alone mode
+ |`-._`-...-` __...-.``-._|'` _.-'|     Port: 6379
+ |    `-._   `._    /     _.-'    |     PID: 1
+  `-._    `-._  `-./  _.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |           http://redis.io        
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |                                  
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+      `-._    `-.__.-'    _.-'                                       
+          `-._        _.-'                                           
+              `-.__.-'                                               
 
-    Note: Replace POD-NAME with the name of your Pod.
-    Here: $ kubectl logs -f redis-master-1068406935-3lswp
+[1] 01 Jan 19:29:47.717 # Server started, Redis version 2.8.19
+[1] 01 Jan 19:29:47.717 # WARNING you have Transparent Huge Pages (THP) support enabled in your kernel. This will create latency and memory usage issues with Redis. To fix this issue run the command 'echo never > /sys/kernel/mm/transparent_hugepage/enabled' as root, and add it to your /etc/rc.local in order to retain the setting after a reboot. Redis must be restarted after THP is disabled.
+[1] 01 Jan 19:29:47.717 # WARNING: The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128.
+[1] 01 Jan 19:29:47.717 * The server is now ready to accept connections on port 6379
+
+Here we are: the Pods is running and the master DB server has started, it is 
+listening on port 6379.
 
 
-4.1.2 - Creating the Redis Master Service
-====================================
+1.2 - Creating the Redis Master Service
+=======================================
 
 The guestbook applications needs to communicate to the Redis master to write 
 its data. You need to apply a Service to proxy the traffic to the Redis master 
@@ -108,28 +135,41 @@ spec:
 Apply the Redis Master Service from the following redis-master-service.yaml 
 file:
 
-$ kubectl apply -f https://k8s.io/examples/application/guestbook/redis-master-service.yaml
+$ kubectl apply -f redis-master-service.yaml
+service/redis-master created
 
 Query the list of Services to verify that the Redis Master Service is running:
 
 $ kubectl get service
-NAME           TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
-kubernetes     ClusterIP   10.0.0.1     <none>        443/TCP    1m
-redis-master   ClusterIP   10.0.0.151   <none>        6379/TCP   8s
-
-    Note: This manifest file creates a Service named redis-master with a set 
-        of labels that match the labels previously defined, so the Service 
-        routes network traffic to the Redis master Pod.
+NAME           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+kubernetes     ClusterIP   10.96.0.1        <none>        443/TCP        4h18m
+redis-master   ClusterIP   10.105.70.232    <none>        6379/TCP       16s
 
 
-4.2 - Start up the Redis Slaves
-===============================
+This manifest file creates a 'Service' named redis-master with a set of labels 
+that match the labels previously defined on the 'Deployment', so the Service 
+routes network traffic to the Redis master Pod.
+
+You have here again an example of how important labels are with Kubernetes.
+
+
+
+2 - Start up the Redis Slaves
+=============================
+
 
 Although the Redis master is a single pod, you can make it highly available to 
-meet traffic demands by adding replica Redis slaves.
+meet traffic demands by adding replica Redis slaves. This is not really a 
+'high availability' (HA) setup, since the Master node still is a Single Point 
+Of Failure (SPOF) but it nevertheless brings resilience for the read 
+operations, which is very important in many applicaitons (i.e. very often, the 
+application read vey often and writes much more rarely).
 
-4.2.1 - Creating the Redis Slave Deployment
-===========================================
+
+
+2.1 - Creating the Redis Slave Deployment
+=========================================
+
 
 Deployments scale based off of the configurations set in the manifest file. In 
 this case, the Deployment object specifies two replicas.
@@ -183,19 +223,21 @@ spec:
 
 Apply the Redis Slave Deployment from the redis-slave-deployment.yaml file:
 
-$ kubectl apply -f https://k8s.io/examples/application/guestbook/redis-slave-deployment.yaml
+$ kubectl apply -f redis-slave-deployment.yaml
+deployment.apps/redis-slave created
 
 Query the list of Pods to verify that the Redis Slave Pods are running:
 
-$ kubectl get pods
-NAME                            READY     STATUS              RESTARTS   AGE
-redis-master-1068406935-3lswp   1/1       Running             0          1m
-redis-slave-2005841000-fpvqc    0/1       ContainerCreating   0          6s
-redis-slave-2005841000-phfv9    0/1       ContainerCreating   0          6s
+$ kubectl get pods -o wide
+NAME                            READY   STATUS    RESTARTS   AGE     IP           NODE              NOMINATED NODE   READINESS GATES
+redis-master-7db7f6579f-8dbh8   1/1     Running   0          11m     10.244.1.8   newyear-worker    <none>           <none>
+redis-slave-7664787fbc-ccjkt    1/1     Running   0          21s     10.244.2.9   newyear-worker2   <none>           <none>
+redis-slave-7664787fbc-md4tr    1/1     Running   0          21s     10.244.1.9   newyear-worker    <none>           <none>
 
 
-4.2.2 - Creating the Redis Slave Service
-========================================
+
+2.2 - Creating the Redis Slave Service
+======================================
 
 The guestbook application needs to communicate to Redis slaves to read data. 
 To make the Redis slaves discoverable, you need to set up a Service. A Service 
@@ -222,26 +264,30 @@ spec:
 Apply the Redis Slave Service from the following redis-slave-service.yaml 
 file:
 
-$ kubectl apply -f https://k8s.io/examples/application/guestbook/redis-slave-service.yaml
+$ kubectl apply -f redis-slave-service.yaml
+service/redis-slave created
+
 
 Query the list of Services to verify that the Redis slave service is running:
 
 $ kubectl get services
-NAME           TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
-kubernetes     ClusterIP   10.0.0.1     <none>        443/TCP    2m
-redis-master   ClusterIP   10.0.0.151   <none>        6379/TCP   1m
-redis-slave    ClusterIP   10.0.0.223   <none>        6379/TCP   6s
+NAME           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+kubernetes     ClusterIP   10.96.0.1        <none>        443/TCP        4h25m
+redis-master   ClusterIP   10.105.70.232    <none>        6379/TCP       7m8s
+redis-slave    ClusterIP   10.100.216.148   <none>        6379/TCP       16s
 
 
-4.3 - Set up and Expose the Guestbook Frontend
-==============================================
+
+3 - Set up and Expose the Guestbook Frontend
+============================================
 
 The guestbook application has a web frontend serving the HTTP requests written 
 in PHP. It is configured to connect to the redis-master Service for write 
 requests and the redis-slave service for Read requests.
 
-4.3.1 - Creating the Guestbook Frontend Deployment
-==================================================
+
+3.1 - Creating the Guestbook Frontend Deployment
+================================================
 
 (file: application/guestbook/frontend-deployment.yaml)
 
@@ -286,19 +332,31 @@ spec:
 
 Apply the frontend Deployment from the frontend-deployment.yaml file:
 
-$ kubectl apply -f https://k8s.io/examples/application/guestbook/frontend-deployment.yaml
+$ kubectl apply -f frontend-deployment.yaml
+deployment.apps/frontend created
 
 Query the list of Pods to verify that the three frontend replicas are running:
 
-$ kubectl get pods -l app=guestbook -l tier=frontend
-NAME                        READY     STATUS    RESTARTS   AGE
-frontend-3823415956-dsvc5   1/1       Running   0          54s
-frontend-3823415956-k22zn   1/1       Running   0          54s
-frontend-3823415956-w9gbt   1/1       Running   0          54s
+$ kubectl get pods -l app=guestbook -l tier=frontend -o wide
+NAME                        READY   STATUS    RESTARTS   AGE   IP            NODE              NOMINATED NODE   READINESS GATES
+frontend-6cb7f8bd65-7glwf   1/1     Running   0          27s   10.244.1.10   newyear-worker    <none>           <none>
+frontend-6cb7f8bd65-xm2sz   1/1     Running   0          27s   10.244.2.10   newyear-worker2   <none>           <none>
+frontend-6cb7f8bd65-zv5qh   1/1     Running   0          27s   10.244.1.11   newyear-worker    <none>           <none>
+
+$ kubectl get pods -l app=guestbook -l tier=backend -o wide
+NAME                            READY   STATUS    RESTARTS   AGE     IP           NODE              NOMINATED NODE   READINESS GATES
+redis-master-7db7f6579f-8dbh8   1/1     Running   0          14m     10.244.1.8   newyear-worker    <none>           <none>
+redis-slave-7664787fbc-ccjkt    1/1     Running   0          4m18s   10.244.2.9   newyear-worker2   <none>           <none>
+redis-slave-7664787fbc-md4tr    1/1     Running   0          4m18s   10.244.1.9   newyear-worker    <none>           <none>
 
 
-4.3.2 - Creating the Frontend Service
-=====================================
+You can see again the importance of well thingking through the use of labels: 
+it can be overwelmingly powerful when the time comes to debug complex and 
+seamingly erratic issues in production.
+
+
+3.2 - Creating the Frontend Service
+===================================
 
 The redis-slave and redis-master Services you applied are only accessible 
 within the container cluster because the default type for a Service is 
@@ -337,33 +395,109 @@ spec:
 
 Apply the frontend Service from the frontend-service.yaml file:
 
-$ kubectl apply -f https://k8s.io/examples/application/guestbook/frontend-service.yaml
+$ kubectl apply -f frontend-service.yaml
+service/frontend created
+
 
 Query the list of Services to verify that the frontend Service is running:
 
 $ kubectl get services
-NAME           TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE
-frontend       NodePort    10.0.0.112   <none>        80:31323/TCP   6s
-kubernetes     ClusterIP   10.0.0.1     <none>        443/TCP        4m
-redis-master   ClusterIP   10.0.0.151   <none>        6379/TCP       2m
-redis-slave    ClusterIP   10.0.0.223   <none>        6379/TCP       1m
+NAME           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+frontend       NodePort    10.98.51.214     <none>        80:31646/TCP   5m23s
+kubernetes     ClusterIP   10.96.0.1        <none>        443/TCP        4h40m
+redis-master   ClusterIP   10.105.70.232    <none>        6379/TCP       22m
+redis-slave    ClusterIP   10.100.216.148   <none>        6379/TCP       15m
 
 
-4.3.3 - Viewing the Frontend Service via NodePort
-=================================================
+3.3 - Viewing the Frontend Service via NodePort
+===============================================
 
 If you deployed this application to a local cluster, you need to find the IP 
-address to view your Guestbook. Run the following command to get the IP 
-address for the frontend Service.
+address to view your Guestbook. As we did in the Part 3, we will use the 
+'describe' command to collect the details on the EndPoint (the IP address 
+which exposes all the NodePorts in the cluster) and the NodePort for the 
+frontend Service:
 
-$ minikube service frontend --url
-http://192.168.99.100:31323
+$ kubectl describe svc/frontend
+Name:                     frontend
+Namespace:                default
+Labels:                   app=guestbook
+                          tier=frontend
+Annotations:              kubectl.kubernetes.io/last-applied-configuration:
+                            {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"labels":{"app":"guestbook","tier":"frontend"},"name":"frontend","namespa...
+Selector:                 app=guestbook,tier=frontend
+Type:                     NodePort
+IP:                       10.98.51.214
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  31646/TCP
+Endpoints:                10.244.1.10:80,10.244.1.11:80,10.244.2.10:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:
+  Type    Reason  Age   From                Message
+  ----    ------  ----  ----                -------
+  Normal  Type    5s    service-controller  LoadBalancer -> NodePort
 
-Copy the IP address, and load the page in your browser to view your guestbook.
+You now know the NodePort: 31646. Checking the kubernetes Service, you will 
+also get the EndPoint which is used to expose all NodePort-type services:
+
+$ kubectl describe svc/kubernetes
+Name:              kubernetes
+Namespace:         default
+Labels:            component=apiserver
+                   provider=kubernetes
+Annotations:       <none>
+Selector:          <none>
+Type:              ClusterIP
+IP:                10.96.0.1
+Port:              https  443/TCP
+TargetPort:        6443/TCP
+Endpoints:         172.17.0.3:6443
+Session Affinity:  None
+Events:            <none>
+
+Here you are: 172.17.0.3. You know both the IP and the port used to expose the 
+frontend Service:
+
+$ export ENDPOINT=172.17.0.3
+$ export NODE_PORT=31646
+$ curl $EDNPOINT:$NODE_PORT
+curl $ENDPOINT:$NODE_PORT
+<html ng-app="redis">
+  <head>
+    <title>Guestbook</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.12/angular.min.js"></script>
+    <script src="controllers.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.13.0/ui-bootstrap-tpls.js"></script>
+  </head>
+  <body ng-controller="RedisCtrl">
+    <div style="width: 50%; margin-left: 20px">
+      <h2>Guestbook</h2>
+    <form>
+    <fieldset>
+    <input ng-model="msg" placeholder="Messages" class="form-control" type="text" name="input"><br>
+    <button type="button" class="btn btn-primary" ng-click="controller.onRedis()">Submit</button>
+    </fieldset>
+    </form>
+    <div>
+      <div ng-repeat="msg in messages track by $index">
+        {{msg}}
+      </div>
+    </div>
+    </div>
+  </body>
+</html>
 
 
-4.3.3 - Viewing the Frontend Service via LoadBalancer
-=====================================================
+We receive HTML code, which means that the server is well exposed at this URL. 
+Copy this URL (172.17.0.3:31646) and load the page in your browser to view 
+your guestbook: a very simple app enabling guests to exchange messages.
+
+
+3.3 - Viewing the Frontend Service via LoadBalancer
+===================================================
 
 If you deployed the frontend-service.yaml manifest with type: LoadBalancer you 
 need to find the IP address to view your Guestbook. Run the following command 
@@ -377,8 +511,8 @@ Copy the external IP address, and load the page in your browser to view your
 guestbook.
 
 
-4.4 - Scale the Web Frontend
-============================
+4 - Scale the Web Frontend
+==========================
 
 Scaling up or down is easy because your servers are defined as a Service that 
 uses a Deployment controller.
@@ -386,37 +520,42 @@ uses a Deployment controller.
 Run the following command to scale up the number of frontend Pods:
 
 $ kubectl scale deployment frontend --replicas=5
+deployment.apps/frontend scaled
 
 Query the list of Pods to verify the number of frontend Pods running:
 
 $ kubectl get pods
 NAME                            READY     STATUS    RESTARTS   AGE
-frontend-3823415956-70qj5       1/1       Running   0          5s
-frontend-3823415956-dsvc5       1/1       Running   0          54m
-frontend-3823415956-k22zn       1/1       Running   0          54m
-frontend-3823415956-w9gbt       1/1       Running   0          54m
-frontend-3823415956-x2pld       1/1       Running   0          5s
-redis-master-1068406935-3lswp   1/1       Running   0          56m
-redis-slave-2005841000-fpvqc    1/1       Running   0          55m
-redis-slave-2005841000-phfv9    1/1       Running   0          55m
+NAME                            READY   STATUS    RESTARTS   AGE
+frontend-6cb7f8bd65-4dst7       1/1     Running   0          8s
+frontend-6cb7f8bd65-7glwf       1/1     Running   0          20m
+frontend-6cb7f8bd65-fknr9       1/1     Running   0          8s
+frontend-6cb7f8bd65-xm2sz       1/1     Running   0          20m
+frontend-6cb7f8bd65-zv5qh       1/1     Running   0          20m
+redis-master-7db7f6579f-8dbh8   1/1     Running   0          35m
+redis-slave-7664787fbc-ccjkt    1/1     Running   0          24m
+redis-slave-7664787fbc-md4tr    1/1     Running   0          24m
 
 Run the following command to scale down the number of frontend Pods:
 
 $ kubectl scale deployment frontend --replicas=2
+deployment.apps/frontend scaled
 
 Query the list of Pods to verify the number of frontend Pods running:
 
 $ kubectl get pods
 NAME                            READY     STATUS    RESTARTS   AGE
-frontend-3823415956-k22zn       1/1       Running   0          1h
-frontend-3823415956-w9gbt       1/1       Running   0          1h
-redis-master-1068406935-3lswp   1/1       Running   0          1h
-redis-slave-2005841000-fpvqc    1/1       Running   0          1h
-redis-slave-2005841000-phfv9    1/1       Running   0          1h
+NAME                            READY   STATUS    RESTARTS   AGE
+frontend-6cb7f8bd65-7glwf       1/1     Running   0          21m
+frontend-6cb7f8bd65-xm2sz       1/1     Running   0          21m
+redis-master-7db7f6579f-8dbh8   1/1     Running   0          36m
+redis-slave-7664787fbc-ccjkt    1/1     Running   0          25m
+redis-slave-7664787fbc-md4tr    1/1     Running   0          25m
 
 
-4.5 - Cleaning up
-=================
+
+5 - Cleaning up
+===============
 
 Deleting the Deployments and Services also deletes any running Pods. Use 
 labels to delete multiple resources with one command.
@@ -440,5 +579,13 @@ service "frontend" deleted
 Query the list of Pods to verify that no Pods are running:
 
 $ kubectl get pods
-No resources found.
+No resources found in default namespace.
 
+
+6 - Conclusion
+==============
+
+I am not completely satisfied with this example: obviously, it show how easy 
+it is to handle an application on top of Kubernetes, but it does not drill 
+into the challenges of implementing statefulness on Kubernetes. To be 
+improved and continued.
