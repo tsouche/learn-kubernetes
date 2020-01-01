@@ -71,7 +71,13 @@ Here we are: the container is published on Docker Hub, and the application is
 running properly, displaying the 'Hello World' message and the ID of the 
 container in which it runs.
 
+We also do the same for the version 2 of the app, whose components are located 
+in the 'v2' sub-directory:
 
+$ cd v2/
+$ docker build -t app-hello-v2 .
+$ docker tag app-hello-v2 tsouche/learn-kubernetes:part3v2
+$ docker push tsouche/learn-kubernetes:part3v2
 
 
 ===============================================================================

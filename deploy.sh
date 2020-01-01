@@ -90,7 +90,7 @@ then
     echo "========================================================"
     echo "..."
 
-    gnome-terminal --tab -- kubectl proxy -p 8080
+    gnome-terminal --tab -- kubectl proxy -p 8001
 
     echo "done"
     echo "..."
@@ -100,7 +100,7 @@ then
     echo "================================="
     echo "..."
 
-    xdg-open http://localhost:8080/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+    xdg-open http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 
     echo "done"
     echo "..."
