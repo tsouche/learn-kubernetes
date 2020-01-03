@@ -392,6 +392,11 @@ kube-flannel.yaml                                100%   14KB  10.8MB/s   00:00
 
 Then back from the master, we deploy this network configuration:
 
+
+ALTERNATIVE: kubectl apply -f yaml/weave-v1.10.yaml
+
+
+
 thierry@k8s-master:~$ kubectl apply -f kube-flannel.yaml
 clusterrole.rbac.authorization.k8s.io/flannel created
 clusterrolebinding.rbac.authorization.k8s.io/flannel created
