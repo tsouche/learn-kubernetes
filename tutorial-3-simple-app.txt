@@ -340,7 +340,6 @@ kube-system            Active   10m
 kubernetes-dashboard   Active   8m55s
 
 tso@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/
-curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/
 {
   "kind": "Pod",
   "apiVersion": "v1",
@@ -1379,6 +1378,26 @@ deployment "hello" successfully rolled out
 To view the current image version of the app, run a describe command against 
 the Pods:
 
+tso@laptop:~$ kubectl describe deployment/hello
+Name:                   hello
+Namespace:              default
+CreationTimestamp:      Sat, 04 Jan 2020 20:42:27 +0100
+Labels:                 app=hello
+Annotations:            deployment.kubernetes.io/revision: 2
+Selector:               app=hello
+Replicas:               6 desired | 6 updated | 6 total | 6 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=hello
+  Containers:
+   learn-kubernetes:
+    Image:        tsouche/learn-kubernetes:part3v2
+    Port:         <none>
+    Host Port:    <none>
+    Environment:  <none>
+[...]
 
 We run now version 2 of the app!
 
