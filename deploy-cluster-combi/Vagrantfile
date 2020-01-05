@@ -17,8 +17,13 @@ Vagrant.configure("2") do |config|
   #config.vm.box_check_update = false
 
   # grab the felipecassiors optimized image for Ubuntu desktop
-  config.vm.box = "felipecassiors/ubuntu1804-4dev"
-  config.vm.box_version = "1.0.9"
+  #config.vm.box = "felipecassiors/ubuntu1804-4dev"
+  #config.vm.box_version = "1.0.9"
+  #config.vm.box_check_update = false
+
+  # grab the peru optimized image for Ubuntu desktop
+  config.vm.box = "peru/ubuntu-18.04-desktop-amd64"
+  config.vm.box_version = "20190901.01"
   config.vm.box_check_update = false
 
   # set the hostname
@@ -35,6 +40,6 @@ Vagrant.configure("2") do |config|
   # apply the initial configuration script to prepare the VM:
   #    - install git, curl, docker...
   #    - add a user called 'thierry'
-  config.vm.provision :shell, path: "./bootstrap.sh"
+  #config.vm.provision :shell, path: "./bootstrap.sh"
 
 end
