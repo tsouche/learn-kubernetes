@@ -1,10 +1,6 @@
 #!/bin/bash
 
 
-# indicate the dashboard version to collect on the kind official site
-VERSION=v2.0.0-beta8
-
-
 # BEWARE - version compatibility matters.
 # Since kind is running on Kubernetes v1.16, I had to:
 #   - install a compatible version of kubectl (1.16.4)
@@ -73,8 +69,6 @@ echo "========================================================================"
 echo "..."
 
 # retrieve the yaml file with the proper version 
-curl -Lo $dashboard_configuration https://raw.githubusercontent.com/kubernetes/dashboard/$VERSION/aio/deploy/recommended.yaml
-
 kubectl apply -f $dashboard_configuration
 
 echo "done"
