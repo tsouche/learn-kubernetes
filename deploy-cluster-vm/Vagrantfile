@@ -5,7 +5,17 @@
 # Kubernetes cluster (1 master ad 2 slaves)
 
 
-config_files_path="./source"
+# Set global variables
+config_files_path="./source/"
+config_VM_shared="k8s_bootstrap_shared_base.sh"
+config_VM_master="k8s_bootstrap_master.sh"
+config_VM_slave="k8s_bootstrap_slave.sh"
+NUM_NODES = 2           # number of Slave nodes to be generated
+MASTER_CPU = 2          # Master's CPUs number
+MASTER_MEM = 4096       # Master's memory size
+SLAVE_CPU = 2           # Slaves' CPUs number
+SLAVE_MEM = 2048        # Slaves' memory size
+START_IP = "192.168.0.20"
 
 # Generate the token needed for a node to join the cluster
 require 'securerandom'
@@ -14,13 +24,6 @@ random_string2 = SecureRandom.hex
 cluster_init_token = "#{random_string1[0..5]}.#{random_string2[0..15]}"
 
 
-# Set global variables
-NUM_NODES = 2           # number of Slave nodes to be generated
-MASTER_CPU = 2          # Master's CPUs number
-MASTER_MEM = 4096       # Master's memory size
-SLAVE_CPU = 2           # Slaves' CPUs number
-SLAVE_MEM = 2048        # Slaves' memory size
-START_IP = "192.168.0.20"
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
@@ -32,7 +35,7 @@ Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-18.04"
   config.vm.box_version = "201912.03.0"
   config.vm.box_check_update = false
-  config.vm.provision :shell, path: $config_files_path"k8s_bootstrap_shared_base.sh"
+  config.vm.provision :shell, path: "#{config_files_path}#{config_VM_shared}"
 
   # Configure the Master node
   config.vm.define "k8s-master", primary: true do |master|
@@ -49,7 +52,7 @@ Vagrant.configure("2") do |config|
       vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
     end
     # apply the master specific script
-    master.vm.provision :shell, path: $config_files_path"k8s_bootstrap_master.sh"
+    master.vm.provision :shell, path: "#{config_files_path}#{config_VM_master}"
   end
 
   # Configure the Slave nodes
@@ -73,7 +76,7 @@ Vagrant.configure("2") do |config|
         vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
       end
       # apply the master specific script
-      node.vm.provision :shell, path: $config_files_path"k8s_bootstrap_slave.sh"
+      node.vm.provision :shell, path: "#{config_files_path}#{config_VM_slave}"
     end
   end
 

@@ -3,7 +3,7 @@
 echo "======================================================================="
 echo "|  Deploying a Kubernetes cluster of 3 VMs (deploy.sh)                |"
 echo "======================================================================="
-echo "..."
+echo " "
 
 # This script is executed as 'thierry' on the laptop, and launches the 
 # deployment of the cluster, retrieves the token to log into the dashboard,
@@ -51,10 +51,9 @@ then
 fi
 mkdir ./temp
 
-echo "..."
 echo "done"
 echo "..."
-
+echo " "
 
 # Launches the 3 VMs, initialize the Kubernetes cluster and get the two slaves
 # to join
@@ -75,9 +74,9 @@ rm -fr ~/.kube
 mkdir ~/.kube
 cp ./.kube/config ~/.kube
 
-echo "..."
 echo "done"
 echo "..."
+echo " "
 
 echo "======================================================================="
 echo "List the cluster's nodes"
@@ -86,9 +85,9 @@ echo "..."
 
 kubectl get nodes
 
-echo "..."
 echo "done"
 echo "..."
+echo " "
 
 # Extract the token needed for the browser to log into the dashboard
 echo "======================================================================="
@@ -102,9 +101,9 @@ dashboard_token=${dashboard_token_full#"token: "}
 touch "${dashboard_token_path}"
 echo $dashboard_token > "${dashboard_token_path}"
 
-echo "..."
 echo "done"
 echo "..."
+echo " "
 
 echo "======================================================================="
 echo "Log into each node from a new tab"
@@ -115,6 +114,10 @@ gnome-terminal --tab -- vagrant ssh k8s-master
 gnome-terminal --tab -- vagrant ssh k8s-slave1
 gnome-terminal --tab -- vagrant ssh k8s-slave2
 
+echo "done"
+echo "..."
+echo " "
+
 echo "======================================================================="
 echo "Start kube proxy in another tab of the existing terminal"
 echo "======================================================================="
@@ -122,23 +125,25 @@ echo "..."
 
 gnome-terminal --tab -- kubectl proxy -p 8001 &
 
-echo "..."
 echo "done"
 echo "..."
+echo " "
 
 echo "======================================================================="
 echo "Launch dashboard in a web browser"
 echo "======================================================================="
 echo "..."
 
-xdg-open http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+xdg-open http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ &
 
+echo " "
 echo "Here is the token needed to log into the dashboard:"
 cat "${dashboard_token_path}"
+echo " "
 
-echo "..."
 echo "done"
 echo "..."
+echo " "
 echo "======================================================================="
 echo " The END (deploy.sh)"
 echo "======================================================================="
