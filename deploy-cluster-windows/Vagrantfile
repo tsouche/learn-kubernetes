@@ -7,13 +7,18 @@
 
 IP = "192.168.0.100"
 CPU = 2
-MEM = 2048
+MEM = 4096
 
 Vagrant.configure("2") do |config|
 
   # grab the bento optimized image for Ubuntu server
-  config.vm.box = "bento/ubuntu-18.04"
-  config.vm.box_version = "201912.03.0"
+  #config.vm.box = "bento/ubuntu-18.04"
+  #config.vm.box_version = "201912.03.0"
+  #config.vm.box_check_update = false
+
+  # grab the felipecassiors optimized image for Ubuntu desktop
+  config.vm.box = "felipecassiors/ubuntu1804-4dev"
+  config.vm.box_version = "1.0.9"
   config.vm.box_check_update = false
 
   # set the hostname
