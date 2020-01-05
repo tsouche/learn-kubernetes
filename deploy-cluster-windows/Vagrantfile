@@ -1,0 +1,35 @@
+# Officiel Bento project's Ubutun 18.04.3 image
+# https://app.vagrantup.com/bento/boxes/ubuntu-18.04/versions/201912.03.0
+#
+# I chose the version with Virtualbox Guest addition version 6.0.14, best
+# compatible with the installed Virtualbox v6.0 on my desktop, which was
+# suggested version to work with Vagrant 2.2.6
+
+IP = "192.168.0.100"
+CPU = 2
+MEM = 2048
+
+Vagrant.configure("2") do |config|
+
+  # grab the bento optimized image for Ubuntu server
+  config.vm.box = "bento/ubuntu-18.04"
+  config.vm.box_version = "201912.03.0"
+  config.vm.box_check_update = false
+
+  # set the hostname
+  config.vm.hostname = "vm"
+  # set a basic network to internet
+  # config.vm.network 'public_network', ip: "#{IP}"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = CPU
+    vb.memory = MEM
+    #vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+  end
+
+  # apply the initial configuration script to prepare the VM:
+  #    - install git, curl, docker...
+  #    - add a user called 'thierry'
+  config.vm.provision :shell, path: "./bootstrap.sh"
+
+end
