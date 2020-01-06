@@ -25,8 +25,8 @@ help_message()
     echo "the type of deployment you want:"
     echo "   deploy-cluster 'argument'"
     echo "where 'argument is:"
-    echo "   -k --kind     it will deploy the cluster on docker containers"
-    echo "   -v --vm       it will deploy the cluster on VMs"
+    echo "    -c, --containers         it will deploy the cluster on containers"
+    echo "    -v, --virtualmachines    it will deploy the cluster on VMs"
     echo " "
     echo "Please retry with one of these arguments."
 }   # end of help_message
@@ -36,16 +36,16 @@ help_message()
 if [ "$1" != "" ]
 then
     case $1 in
-        -k | --kind )       cd ./deploy-cluster-kind/
-                            ./deploy-kind.sh
-                            cd ..
-                            ;;
-        -v | -vm )          cd ./deploy-cluster-vm/
-                            ./deploy-vm.sh
-                            cd ..
-                            ;;
-        -h | --help )       help_message
-                            ;;
+        -c | --containers )      cd ./deploy-cluster-cont/
+                                 ./deploy-cont.sh
+                                 cd ..
+                                 ;;
+        -v | -virtualmachines )  cd ./deploy-cluster-vm/
+                                 ./deploy-vm.sh
+                                 cd ..
+                                 ;;
+        -h | --help )            help_message
+                                 ;;
     esac
 else
     help_message

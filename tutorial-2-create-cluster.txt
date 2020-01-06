@@ -27,6 +27,53 @@ Several scenarios are possible, and we will drill into three options:
       memory.
 
 The appendix 0 contains the details for the three deployment scenarios. We will 
-briefly describe here only the first one, which is actually the one from which 
-I have most learnt when writing this tutorial.
+only describe here how to trigger the automated deployment of teh three 
+approaches.
+
+
+===============================================================================
+
+Part 1 - deployment of a Linux-powered laptop
+
+===============================================================================
+
+
+This part covers the first two scenario: the same script called 
+'deploy-cluster.sh' can trigger the automated deployment of both VM-based and 
+container-based clusters:
+
+tso@laptop:~ cd /projects/learn-kubernetes/
+tso@laptop:/projects/learn-kubernetes/$ ./deploy-cluster.sh
+
+If you pass no argument to the script, or if you pass the -h (or --help) 
+argument, it will display the following message:
+
+    ========================================================================
+    |  Deploy a 3 nodes Kubernetes cluster                                 |
+    ========================================================================
+    
+    This script will deploy a 3-nodes Kubernetes cluster. You must indicate
+    the type of deployment you want:
+        deploy-cluster 'argument'
+    where 'argument is:
+        -c, --containers         it will deploy the cluster on containers
+        -v, --virtualmachines    it will deploy the cluster on VMs
+    
+    Please retry with one of these arguments.
+    
+    ========================================================================
+    |  The END                                                             |
+    ========================================================================
+
+As indicated, you can trigger the deployment on VMs with the argument -v (or 
+--virtualmachines), and the deployment on containers with the argument -c (or 
+--containers).
+
+This script is actually only switching your action to two other shell scripts 
+which are each specialized in one type of deployment:
+
+    ./deploy-cluster-vm/deploy-vm.sh        for the VMs based deployment
+    ./deploy-cluster-cont/deploy-cont.sh    for the container-based deployment
+
+You may run these two scripts directly, without using 'deploy-cluster.sh'.
 
