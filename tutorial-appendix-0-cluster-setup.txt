@@ -61,6 +61,10 @@ real production world, most of these steps are automated and you would simply
     Note: Actually, we also automated the whole process using Vagrant to 
         automate the creation of the VMs and the specialisation into Master 
         or Slave thanks to specialized shell scripts.
+        
+    Note: various configuration files required to deploy the cluster are 
+        available in the directory:
+        /projects/learn-kubernetes/deploy-cluster-vm/source/
 
 The steps are:
     - building an initial  VM image ("K8s BARE") with all the prerequisites 
@@ -117,7 +121,7 @@ Note: in order to save time, you can jump directly as the section 2.4 and set
 2 - Building the first VM
 =========================
 
-(you can skip this phase and use directly the "K8s BARE" image)
+    Note: you can skip this phase if you use directly the "K8s BARE" VM image.
 
 Nothing fancy here: we've built from the Ubuntu Server 18.04 LTS, with:
   - two CPUs (it is mandatory to run a Kubernetes master)
@@ -421,97 +425,37 @@ production environment...
 =======================================
 
 We now must deploy the network within the cluster. For the sake of simplicity, 
-we will use the 'flannel' network configuration (not because it is better than 
-others, but because I know it is simple to deploy and make work).
+we will use the 'weave' network add-on (I tried 'flannel' by default but I 
+encountered multiple issues with the configuration of the cluster internal 
+network).
 
-The configuration file for the 'flannel' network can be directly retrieved 
+The configuration file for the 'weave' network can be directly retrieved 
 from the kubernetes github repository, and a copy is available in the 'yaml' 
-sub-directory.
+sub-directory, named 'weave-v1.10.yaml'.
 
 From the host machine, we copy the configuration file on the Master node:
 
-tso@laptop:~$ scp /projects/get-started/kubernetes/yaml/kube-flannel.yaml thierry@192.168.0.134:~/.
+tso@laptop:~$ scp /projects/learn-kubernetes/deploy-cluster-vm/source/weave-v1.10.yaml thierry@192.168.0.134:~/.
 thierry@192.168.0.134's password: 
-kube-flannel.yaml                                100%   14KB  10.8MB/s   00:00
+weave-v1.10.yamll                                100%   14KB  10.8MB/s   00:00
 
 Then back from the master, we deploy this network configuration:
 
-
-ALTERNATIVE: kubectl apply -f yaml/weave-v1.10.yaml
-
-
-
 thierry@k8s-master:~$ kubectl apply -f weave-v1.10.yaml
-clusterrole.rbac.authorization.k8s.io/flannel created
-clusterrolebinding.rbac.authorization.k8s.io/flannel created
-serviceaccount/flannel created
-configmap/kube-flannel-cfg created
-daemonset.extensions/kube-flannel-ds-amd64 created
-daemonset.extensions/kube-flannel-ds-arm64 created
-daemonset.extensions/kube-flannel-ds-arm created
-daemonset.extensions/kube-flannel-ds-ppc64le created
-daemonset.extensions/kube-flannel-ds-s390x created
-
-Once you have received this message, the master will need a bit of time to 
-process the deployment as it will actually spawn new pods in charge of 
-operating the network. You can see the progress by asking several times to 
-show the pods running on the master with the command:
-
-thierry@k8s-master:~$ kubectl get pods --all-namespaces -o wide
-
-See the results at several seconds distance, and observe that the pods status
-evolve as their get from 'Pending' to 'ContainerCreating' and finally to 
-'Running'.
-
-thierry@k8s-master:~$ kubectl get pods --all-namespaces -o wide
-NAMESPACE     NAME                                 READY   STATUS    RESTARTS   AGE     IP          NODE         NOMINATED NODE   READINESS GATES
-kube-system   coredns-6955765f44-pfglx             0/1     Pending   0          2m58s   <none>      <none>       <none>           <none>
-kube-system   coredns-6955765f44-phjl4             0/1     Pending   0          2m58s   <none>      <none>       <none>           <none>
-kube-system   etcd-k8s-master                      1/1     Running   0          3m12s   10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-apiserver-k8s-master            1/1     Running   0          3m12s   10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-controller-manager-k8s-master   1/1     Running   0          3m12s   10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-flannel-ds-amd64-5zvqf          1/1     Running   0          14s     10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-proxy-w2srw                     1/1     Running   0          2m58s   10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-scheduler-k8s-master            1/1     Running   0          3m12s   10.0.2.15   k8s-master   <none>           <none>
-thierry@k8s-master:~$ kubectl get pods --all-namespaces -o wide
-NAMESPACE     NAME                                 READY   STATUS              RESTARTS   AGE     IP          NODE         NOMINATED NODE   READINESS GATES
-kube-system   coredns-6955765f44-pfglx             0/1     ContainerCreating   0          3m4s    <none>      k8s-master   <none>           <none>
-kube-system   coredns-6955765f44-phjl4             0/1     ContainerCreating   0          3m4s    <none>      k8s-master   <none>           <none>
-kube-system   etcd-k8s-master                      1/1     Running             0          3m18s   10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-apiserver-k8s-master            1/1     Running             0          3m18s   10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-controller-manager-k8s-master   1/1     Running             0          3m18s   10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-flannel-ds-amd64-5zvqf          1/1     Running             0          20s     10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-proxy-w2srw                     1/1     Running             0          3m4s    10.0.2.15   k8s-master   <none>           <none>
-kube-system   kube-scheduler-k8s-master            1/1     Running             0          3m18s   10.0.2.15   k8s-master   <none>           <none>
-thierry@k8s-master:~$ kubectl get pods --all-namespaces -o wide
-NAMESPACE     NAME                                 READY   STATUS    RESTARTS   AGE     IP           NODE         NOMINATED NODE   READINESS GATES
-kube-system   coredns-6955765f44-pfglx             0/1     Running   0          3m7s    10.244.0.3   k8s-master   <none>           <none>
-kube-system   coredns-6955765f44-phjl4             0/1     Running   0          3m7s    10.244.0.2   k8s-master   <none>           <none>
-kube-system   etcd-k8s-master                      1/1     Running   0          3m21s   10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-apiserver-k8s-master            1/1     Running   0          3m21s   10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-controller-manager-k8s-master   1/1     Running   0          3m21s   10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-flannel-ds-amd64-5zvqf          1/1     Running   0          23s     10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-proxy-w2srw                     1/1     Running   0          3m7s    10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-scheduler-k8s-master            1/1     Running   0          3m21s   10.0.2.15    k8s-master   <none>           <none>
-thierry@k8s-master:~$ kubectl get pods --all-namespaces -o wide
-NAMESPACE     NAME                                 READY   STATUS    RESTARTS   AGE     IP           NODE         NOMINATED NODE   READINESS GATES
-kube-system   coredns-6955765f44-pfglx             1/1     Running   0          3m16s   10.244.0.3   k8s-master   <none>           <none>
-kube-system   coredns-6955765f44-phjl4             1/1     Running   0          3m16s   10.244.0.2   k8s-master   <none>           <none>
-kube-system   etcd-k8s-master                      1/1     Running   0          3m30s   10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-apiserver-k8s-master            1/1     Running   0          3m30s   10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-controller-manager-k8s-master   1/1     Running   0          3m30s   10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-flannel-ds-amd64-5zvqf          1/1     Running   0          32s     10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-proxy-w2srw                     1/1     Running   0          3m16s   10.0.2.15    k8s-master   <none>           <none>
-kube-system   kube-scheduler-k8s-master            1/1     Running   0          3m30s   10.0.2.15    k8s-master   <none>           <none>
-
-Example with weavenet:
-thierry@k8s-master:~$ kubectl apply -f weave.yaml
 serviceaccount "weave-net" created
 clusterrole "weave-net" created
 clusterrolebinding "weave-net" created
 role "weave-net" created
 rolebinding "weave-net" created
 daemonset "weave-net" created 
+
+Once you have received this message, the master will need a bit of time to 
+process the deployment as it will actually spawn new pods in charge of 
+operating the network. You can see the progress by asking several times to 
+show the pods running on the master with the command 'get pods': see the 
+results at several seconds distance, and observe that the pods status evolve as 
+their get from 'Pending' to 'ContainerCreating' and finally to 'Running'.
+
 thierry@k8s-master:~$ kubectl get pods --all-namespaces
 NAMESPACE     NAME                              READY     STATUS    RESTARTS   AGE
 kube-system   etcd-kube-01                      1/1       Running   0          5m
@@ -706,8 +650,8 @@ First we create the 'Service Account', which mean the account (= the user
 profile) which will be related to the service (here the dashboard, which is a 
 Kubernetes service).
     - The name of the account is 'admin-user'.
-    - We define a 'namespace' on which is it valid: its valid eclare it valid in the 
-namespace 'kubernetes-dashboard' first.
+    - We define a 'namespace' on which is it valid: its valid eclare it valid 
+        in the namespace 'kubernetes-dashboard' first.
 
 (file: dashboard-adminuser.yaml)
 apiVersion: v1
@@ -838,12 +782,12 @@ Host, and tehn we will try to connect from the Host again:
 
 From a different terminal:
 
-tso@laptop:~$ kubectl proxy -p 8080
-Starting to serve on 127.0.0.1:8080
+tso@laptop:~$ kubectl proxy -p 8001
+Starting to serve on 127.0.0.1:8001
 
 And then back in our 'good old Host' terminal:
 
-tso@laptop:~$ curl http://localhost:8080/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+tso@laptop:~$ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 {
   "kind": "Status",
   "apiVersion": "v1",
@@ -966,6 +910,10 @@ tasks amongst the node aims at freeing up as much as possible of the slave's
 resources to make them available to... you.
 
 
+                                    *
+                                    
+                                  *   *
+
 
 ===============================================================================
 
@@ -977,7 +925,8 @@ Part 2 - deployment of a Kubernetes-inDocker (Kind) cluster
 As in Part 1, we assume again that you have a Linux laptop and an account with 
 sudo privilege.
 
-In order to avoid multiple side effects due to version changes, here is the set of verions used for all main components:
+In order to avoid multiple side effects due to version changes, here is the set 
+of verions used for all main components:
     - docker of version 18.9 minimum
     - GO version 1.13 (language on which Kind is developped)
     - Kind version 0.6.1 (which runs Kubernetes version 1.16.0)
@@ -1096,6 +1045,10 @@ To me, this is more than just a spoof: Kind could bring the steps towards a
 containers, and not anymore rotate around servers or VMs. To be continued...
 
 
+                                    *
+                                    
+                                  *   *
+
 
 ===============================================================================
 
@@ -1115,7 +1068,9 @@ his need, I finally resolved into setting up a VM with all the prerequisites
 
 I initially went the Vagrant way: however, for some reason, I felt it difficult 
 to work out with a desktop linux, while everything works fine with server 
-versions). So I eventually decided to setup the VM with VirtualBox, export the OVA VM image and make it available to students so that they can run the tutorial 'as if they were running Kind on Linux'.
+versions). So I eventually decided to setup the VM with VirtualBox, export the 
+OVA VM image and make it available to students so that they can run the 
+tutorial 'as if they were running Kind on Linux'.
 
 The VM was set:
     - from a Ubuntu 18.04.3 LTS base OS
@@ -1130,7 +1085,12 @@ As of this step, it is then very similar with the Part 2:
     - deploy the dashboard and the sample user
     - copy the token and log into the dashboard from a browser
 
-    
+
+                                    *
+                                    
+                                  *   *
+
+
 ===============================================================================
 
 Part 4 - automated deployment
