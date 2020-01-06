@@ -225,7 +225,7 @@ key to the local apt repository, add the google kubernetes repository... and
 finally install kubernetes:
 
 root@k8s_node:/# curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-root@k8s_node:/# add-apt-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+root@k8s_node:/# add-apt-repository "deb http://apt.kubernetes.io/ kubernetes-bionic main"
 root@k8s_node:/# apt-get update
 root@k8s_node:/# apt-get install -y kubelet kubeadm kubectl
 
