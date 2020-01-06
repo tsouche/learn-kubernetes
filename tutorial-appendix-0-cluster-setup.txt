@@ -35,7 +35,7 @@ a student explaining that he did not have a Linux laptop with sudo privilege:
 he only could work out teh tutorial on a Windows laptop. To meet this 
 requirement, I had to launch a virtual machine (on VirtualBox on Windows) and 
 run the cluster - using kind - inside the virtual machine. Thus no need to have 
-a Linux laptopn... but an environment even less presentative than the two other 
+a Linux laptop... but an environment even less presentative than the two other 
 approaches.
 
 
@@ -57,6 +57,10 @@ will deploy a Kubernetes cluster. We intentionaly make every step manual, so
 that you can appreciate the full process at leat once in your lifetime. In 
 real production world, most of these steps are automated and you would simply 
 "push a button".
+
+    Note: Actually, we also automated the whole process using Vagrant to 
+        automate the creation of the VMs and the specialisation into Master 
+        or Slave thanks to specialized shell scripts.
 
 The steps are:
     - building an initial  VM image ("K8s BARE") with all the prerequisites 
@@ -87,7 +91,9 @@ Note: in order to save time, you can jump directly as the section 2.4 and set
 ### as shown in the tutorial (i.e. replace the tutorial's info with yours) and 
 ### run your own version of the commands:
 ###
-### 1) the ip@ of the VMs
+### 1) the ip@ of the VMs: in the automated deployment, we set fixed ip@ for 
+### the VMs, but these ip@ are allocated dynamically during the manual 
+### implementation.
 ###
 ### In the tutorial, I used (copied from a real execution):
 ###    master:  192.168.0.134
@@ -115,7 +121,7 @@ Note: in order to save time, you can jump directly as the section 2.4 and set
 
 Nothing fancy here: we've built from the Ubuntu Server 18.04 LTS, with:
   - two CPUs (it is mandatory to run a Kubernetes master)
-  - 2048 MB memory
+  - 4096 MB memeory for the Master, and 2048 MB memory for the Slaves
   - two network interfaces:
        * one NAT (which is default setting) for internet connectivity
        * one configured in a "Bridge Adapter" mode, pointing on the most 
@@ -136,7 +142,7 @@ nodes, we then need to log as root and (in this order):
 
 For convenience, in this tutorial, we will configure the VMs by connecting 
 into them via ssh from terminals running on the host machine, using the 
-default admin profile (login=thierry, password=thierry) (Secure, huh!!!). 
+default admin profile (login=thierry, password=thierry) (secure, huh!!!). 
 There are few advantages doing so, namely the fact that the prompt then tells 
 on which machine you are actually logged, which is very convenient when you 
 will have 3 VMs running at the same time.
@@ -435,7 +441,7 @@ ALTERNATIVE: kubectl apply -f yaml/weave-v1.10.yaml
 
 
 
-thierry@k8s-master:~$ kubectl apply -f kube-flannel.yaml
+thierry@k8s-master:~$ kubectl apply -f weave-v1.10.yaml
 clusterrole.rbac.authorization.k8s.io/flannel created
 clusterrolebinding.rbac.authorization.k8s.io/flannel created
 serviceaccount/flannel created
@@ -498,6 +504,27 @@ kube-system   kube-flannel-ds-amd64-5zvqf          1/1     Running   0          
 kube-system   kube-proxy-w2srw                     1/1     Running   0          3m16s   10.0.2.15    k8s-master   <none>           <none>
 kube-system   kube-scheduler-k8s-master            1/1     Running   0          3m30s   10.0.2.15    k8s-master   <none>           <none>
 
+Example with weavenet:
+thierry@k8s-master:~$ kubectl apply -f weave.yaml
+serviceaccount "weave-net" created
+clusterrole "weave-net" created
+clusterrolebinding "weave-net" created
+role "weave-net" created
+rolebinding "weave-net" created
+daemonset "weave-net" created 
+thierry@k8s-master:~$ kubectl get pods --all-namespaces
+NAMESPACE     NAME                              READY     STATUS    RESTARTS   AGE
+kube-system   etcd-kube-01                      1/1       Running   0          5m
+kube-system   kube-apiserver-kube-01            1/1       Running   0          6m
+kube-system   kube-controller-manager-kube-01   1/1       Running   0          5m
+kube-system   kube-dns-6f4fd4bdf-whbhd          3/3       Running   0          6m
+kube-system   kube-proxy-2hdhk                  1/1       Running   0          6m
+kube-system   kube-proxy-tvhjk                  1/1       Running   0          5m
+kube-system   kube-proxy-wspmv                  1/1       Running   0          5m
+kube-system   kube-scheduler-kube-01            1/1       Running   0          6m
+kube-system   weave-net-9ghn5                   2/2       Running   1          5m
+kube-system   weave-net-lh8tq                   2/2       Running   0          5m
+kube-system   weave-net-qhr25                   2/2       Running   0          5m
 
 This is actually interesting as it reveals one key nature of Kubernetes: it
 will enable you to run containerized applications, but it relies itself on 
@@ -673,7 +700,7 @@ We will create the user it by writing a yaml manifest describing the user,
 and then a second manifest describing its roles and provoleges. We will then 
 apply these two manifests to the cluster via the kubectl command.
 
-A user's role/privilege is always linked to a set of resources: as usual in Kubernetes, we actually 
+A user's role/privilege is always linked to a set of resources:
 
 First we create the 'Service Account', which mean the account (= the user 
 profile) which will be related to the service (here the dashboard, which is a 
@@ -935,7 +962,7 @@ with their respective details. Click on one of the salves and observe the
 than teh master, because it carries only a fraction of the control plane tasks
 compared to the master. Quite logically, the slaves are primarily focused on 
 running your application, and not Kubernetes itself: the repartition of the 
-tasks amongst teh node aims at freeing up as much as possible of the slave's 
+tasks amongst the node aims at freeing up as much as possible of the slave's 
 resources to make them available to... you.
 
 
