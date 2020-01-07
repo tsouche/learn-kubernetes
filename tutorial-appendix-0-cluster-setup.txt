@@ -521,10 +521,21 @@ To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
 tso@laptop:~$ kubectl get nodes
 NAME     STATUS   ROLES    AGE   VERSION
 master   Ready    master   10m   v1.17.0
+
 tso@laptop:~$ kubectl get services -o wide
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE   SELECTOR
 kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   10m   <none>
 
+tso@laptop:~$ kubectl get pods -A -o wide
+NAMESPACE     NAME                             READY   STATUS    RESTARTS   AGE     IP          NODE     NOMINATED NODE   READINESS GATES
+kube-system   coredns-6955765f44-5qgrs         1/1     Running   0          10m     10.32.0.2   master   <none>           <none>
+kube-system   coredns-6955765f44-v29s9         1/1     Running   0          10m     10.32.0.3   master   <none>           <none>
+kube-system   etcd-master                      1/1     Running   0          10m     10.0.2.15   master   <none>           <none>
+kube-system   kube-apiserver-master            1/1     Running   0          10m     10.0.2.15   master   <none>           <none>
+kube-system   kube-controller-manager-master   1/1     Running   0          10m     10.0.2.15   master   <none>           <none>
+kube-system   kube-proxy-6kn74                 1/1     Running   0          10m     10.0.2.15   master   <none>           <none>
+kube-system   kube-scheduler-master            1/1     Running   0          10m     10.0.2.15   master   <none>           <none>
+kube-system   weave-net-c5hd4                  2/2     Running   0          4m48s   10.0.2.15   master   <none>           <none>
 As you can see, the master is still alone; you have not yet joined a slave 
 into the cluster.
 
@@ -564,7 +575,6 @@ command:
 First copy the configuration files from the 'yaml' sub-directory to the 
 Master, with teh following command:
 
-tso@laptop:~$ scp /projects/learn-kubernetes/deploy-cluster-vm/source/dashboard* tuto@192.168.1.200:~/
 tso@laptop:~$ scp /projects/learn-kubernetes/deploy-cluster-vm/source/dashboard* tuto@192.168.1.200:~/
 tuto@192.168.1.200's password: 
 dashboard-adminuser.yaml                        100%  377   191.8KB/s   00:00    
@@ -608,9 +618,6 @@ service/dashboard-metrics-scraper created
 deployment.apps/dashboard-metrics-scraper created
 
 
-The configuration YAML file is also available in the 'yaml' directory, under 
-the name 'dashboard-v200b8-recommended.yaml'.
-
 You can check that the dashboard is actually running by checking the pods from
 the host machine:
 
@@ -649,8 +656,8 @@ can follow this guide, and create a sample user.
         representative of a 'real' environment.
 
 We will create the user it by writing a yaml manifest describing the user, 
-and then a second manifest describing its roles and provoleges. We will then 
-apply these two manifests to the cluster via the kubectl command.
+and then add into it the description of its roles and privileges. We will then 
+apply this manifest to the cluster via the kubectl command.
 
 A user's role/privilege is always linked to a set of resources:
 
@@ -660,13 +667,7 @@ Kubernetes service).
     - The name of the account is 'admin-user'.
     - We define a 'namespace' on which is it valid: its valid eclare it valid 
         in the namespace 'kubernetes-dashboard' first.
-
-In most cases after provisioning our cluster using kops or kubeadm or any 
-other popular tool, the ClusterRole admin-Role already exists in the cluster. 
-We can use it and create only ClusterRoleBinding for our ServiceAccount.
-
-    NOTE: apiVersion of ClusterRoleBinding resource may differ between 
-        Kubernetes versions. Prior to Kubernetes v1.8 the apiVersion was rbac.authorization.k8s.io/v1beta1.
+Then we describe the role, called 'ClusterRoleBinding', granted to this user.
 
     (file: dashboard-adminuser.yaml)
     ---
@@ -691,19 +692,26 @@ We can use it and create only ClusterRoleBinding for our ServiceAccount.
 
 Then run the command:
 
+tso@laptop:~$ scp /projects/learn-kubernetes/deploy-cluster-vm/source/dashboard* tuto@192.168.1.200:~/
+tuto@192.168.1.200's password:
+dashboard-adminuser.yaml                        100%  377   191.8KB/s   00:00
+dashboard-v200b8-recommended.yaml               100% 7568     2.8MB/s   00:00
+
 thierry@master:~$ kubectl apply -f dashboard-adminuser.yaml
 tuto@master:~$ kubectl apply -f dashboard-adminuser.yaml
 serviceaccount/admin-user created
 clusterrolebinding.rbac.authorization.k8s.io/admin-user created
 
+Done :-)
 
 
 5.4 - Collect the Bearer Token
 ==============================
 
-Now we need to find THE token we can use to log in. Execute following command:
+Now we need to find THE token needed to log in. Execute following command:
 
-tuto@master:~$ kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
+tuto@master:~$ admin_profile=kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}'
+tuto@master:~$ kubectl -n kubernetes-dashboard describe secret $admin_proile
 Name:         admin-user-token-n4pkj
 Namespace:    kubernetes-dashboard
 Labels:       <none>
@@ -727,91 +735,76 @@ it to log into the dashboard, when we will access it via the browser.
 =========================================
 
 In order to connect to the dashboard, you simply need to access the URL 
-http://server@ip:server@port/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
+http://server@ip:server@port/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 
 However, the server runs on the cluster's internal network, and you cannot 
 access directly this network: you need to connect via a proxy provided by 
-Kubernetes.
+Kubernetes. To be clear, the proxy need to run on the machine from which we 
+intend to access the dashboard, so in our case, we will run the proxy from the 
+host machine (i.e. the laptop):
 
-Since the web server is running on the Master (since we have activated only 
-one node in the cluster so far), let's try to connect directly from the 
-Master (knowing that the default port is probably 80):
-
-thierry@master:~$ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
-curl: (7) Failed to connect to localhost port 80: Connection refused
-
-As expected, the connection is refused: we will run a proxy from a different 
-terminal window (because teh proxy runs in exclusive mode in that window) and 
-we will try again to connect from the Master:
-
-From another terminal:
-
-tuto@laptop:~$ ssh tuto@192.168.1.200
-tuto@192.168.1.200's password: 
-Welcome to Ubuntu 18.04.3 LTS (GNU/Linux 4.15.0-72-generic x86_64)
-...
-Last login: Fri Dec 27 15:14:16 2019 from 192.168.0.23
-thierry@master:~$ kubectl proxy -p 8001
-Starting to serve on 127.0.0.1:8001
-
-Now we will try again to access the dashboard from the Master, back on the 
-previous terminal and using the proxied port 8001:
-
-tuto@master:~$ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
-{
-  "kind": "Status",
-  "apiVersion": "v1",
-  "metadata": {
-    
-  },
-  "status": "Failure",
-  "message": "the server could not find the requested resource",
-  "reason": "NotFound",
-  "details": {
-    
-  },
-  "code": 404
-}
-
-Well, we don't exactly get the expected result (i.e. we see a 404 code which 
-is never a great news when connecting to a web server) but at least the 
-connection is accepted. We've done well actually, but we still to work a bit 
-more since this is not yet so useful, is it? We need to see what exactly 
-happens in a browser to better understand.
-
-Actually, since the Master VM is built from a 'server' OS (i.e. Ubuntu without 
-the UI and all related components, in a pure CLI mode), we cannot run a 
-browser directly from the Master. We need to do so from the Host. So we will 
-kill the proxy running on the Master (beware: run only ONE proxy at any moment 
-in time), and launch the same Kubernetes  proxy from a new terminal on the 
-Host, and tehn we will try to connect from the Host again:
-
-From a different terminal:
+First, let's activate the proxy from another tab of the terminal window
 
 tso@laptop:~$ kubectl proxy -p 8001
 Starting to serve on 127.0.0.1:8001
 
-And then back in our 'good old Host' terminal:
+From now on, the Kubernetes API server is accessible on the laptop, listening 
+on the port 8001: let's check this by polling the API to ask for the server's 
+version:
 
-tso@laptop:~$ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+tso@laptop:~$ curl http://127.0.0.1:8001/version
 {
-  "kind": "Status",
-  "apiVersion": "v1",
-  "metadata": {
-    
-  },
-  "status": "Failure",
-  "message": "the server could not find the requested resource",
-  "reason": "NotFound",
-  "details": {
-    
-  },
-  "code": 404
+  "major": "1",
+  "minor": "17",
+  "gitVersion": "v1.17.0",
+  "gitCommit": "70132b0f130acc0bed193d9ba59dd186f0e634cf",
+  "gitTreeState": "clean",
+  "buildDate": "2019-12-07T21:12:17Z",
+  "goVersion": "go1.13.4",
+  "compiler": "gc",
+  "platform": "linux/amd64"
 }
 
-Yes! The connection is accepted: we now can launch a browser from the Host and
-see what happens. Do it now, and you will see the login page of the dashboard:
-    - tick the 'Token' radio button and paste the token which you copied 
+It works!!! Let's now try to access the dashboard:
+
+tso@laptop:~$ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+<!--
+Copyright 2017 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Kubernetes Dashboard</title>
+  <link rel="icon" type="image/png" href="assets/images/kubernetes-logo.png"/>
+  <meta name="viewport" content="width=device-width">
+<link rel="stylesheet" href="styles.dd2d1d3576191b87904a.css"></head>
+
+<body>
+  <kd-root></kd-root>
+<script src="runtime.380dd4d7ab4891f91b7b.js" defer=""></script><script src="polyfills-es5.65f1e5151c840cf04c3e.js" nomodule="" defer=""></script><script src="polyfills.8623bbc9d68876cdaaaf.js" defer=""></script><script src="scripts.7d5e232ea538f2c0f8a7.js" defer=""></script><script src="main.3036e86b43f81b098e24.js" defer=""></script></body>
+
+</html>
+
+
+The connection is accepted, even though the content here looks a bit cryptic: 
+we now can launch a browser on the laptop and see the login page of the 
+dashboard:
+    - tick the 'Token' button and paste the token which you copied 
         earliers (the one which we got from the 'get secret' and 'describe' 
         commands).
     - sign in
@@ -846,59 +839,88 @@ It's now time to join the two slaves into the cluster. To do so, we need to
 log into the slave nodes (with ssh), as 'root', and use the token and key 
 which were displayed at the end of the cluster initialisation message:
 
-root@slave1:/# kubeadm join 192.168.1.200:6443 --token 2693ts.tkmiic8k3ngfa96l \
-    --discovery-token-ca-cert-hash sha256:3f151eb58176dd4473f58b1d8db39b9aa64b13a06f4accc6d60b68a0a5612beb 
+tso@laptop:~$ ssh tuto@192.168.1.201
+The authenticity of host '192.168.1.201 (192.168.1.201)' can't be established.
+[...]
+Last login: Tue Jan  7 13:04:30 2020 from 192.168.1.25
 
-and then:
+tuto@slave1:~$ sudo su
+[sudo] password for tuto: 
 
-root@slave2:/# kubeadm join 192.168.1.200:6443 --token 2693ts.tkmiic8k3ngfa96l \
-    --discovery-token-ca-cert-hash sha256:3f151eb58176dd4473f58b1d8db39b9aa64b13a06f4accc6d60b68a0a5612beb 
+root@slave1:/home/tuto# kubeadm join 192.168.1.200:6443 --token f5m0sf.2p7ziygd5v75jk8g \
+>     --discovery-token-ca-cert-hash sha256:5e716f15b627edfa0eb9693971d79fc4cc12e618352a13c5b2a7d6e063b2027e
+[preflight] WARNING: JoinControlPane.controlPlane settings will be ignored when control-plane flag is not set.
+[preflight] Running pre-flight checks
+[...]
+[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
 
-Come back to the laptop and check the status of the cluster. Check the number 
-of nodes as they get enlisted and active into the cluster:
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
 
-thierry@Ubuntu-thierry:~$ kubectl get nodes
-NAME         STATUS   ROLES    AGE   VERSION
-master   Ready    master   69m   v1.17.0
-thierry@Ubuntu-thierry:~$ kubectl get nodes
-NAME         STATUS     ROLES    AGE   VERSION
-master   Ready      master   70m   v1.17.0
-slave1   NotReady   <none>   0s    v1.17.0
-thierry@Ubuntu-thierry:~$ kubectl get nodes
-NAME         STATUS     ROLES    AGE   VERSION
-master   Ready      master   70m   v1.17.0
-slave1   NotReady   <none>   10s   v1.17.0
-slave2   NotReady   <none>   1s    v1.17.0
-thierry@Ubuntu-thierry:~$ kubectl get nodes
-NAME         STATUS     ROLES    AGE   VERSION
-master   Ready      master   70m   v1.17.0
-slave1   NotReady   <none>   29s   v1.17.0
-slave2   Ready      <none>   20s   v1.17.0
-thierry@Ubuntu-thierry:~$ kubectl get nodes
-NAME         STATUS   ROLES    AGE   VERSION
-master   Ready    master   70m   v1.17.0
-slave1   Ready    <none>   31s   v1.17.0
-slave2   Ready    <none>   22s   v1.17.0
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+
+That's it: 'slave1' is now part of the cluster.
+
+and then let's do the same for 'slave2':
+
+tso@laptop:~$ ssh tuto@192.168.1.202
+tuto@slave2:~$ sudo su
+root@slave2:/# kubeadm join 192.168.1.200:6443 --token f5m0sf.2p7ziygd5v75jk8g \
+>     --discovery-token-ca-cert-hash sha256:5e716f15b627edfa0eb9693971d79fc4cc12e618352a13c5b2a7d6e063b2027e
+[preflight] WARNING: JoinControlPane.controlPlane settings will be ignored when control-plane flag is not set.
+[preflight] Running pre-flight checks
+[...]
+[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+
+root@slave2:/#
+
+
+And now 'slave2' has joined the cluster as well. Come back to the laptop and 
+check the status of the cluster. Check the number of nodes as they get 
+enlisted and active into the cluster:
+
+
+tuto@master:~$ kubectl get nodes
+NAME     STATUS     ROLES    AGE   VERSION
+master   Ready      master   23m   v1.17.0
+slave1   NotReady   <none>   9s    v1.17.0
+tuto@master:~$ kubectl get nodes
+NAME     STATUS     ROLES    AGE   VERSION
+master   Ready      master   23m   v1.17.0
+slave1   NotReady   <none>   33s   v1.17.0
+slave2   NotReady   <none>   3s    v1.17.0
+tso@laptop:~$ kubectl get nodes
+NAME     STATUS     ROLES    AGE   VERSION
+master   Ready      master   23m   v1.17.0
+slave1   Ready      <none>   51s   v1.17.0
+slave2   NotReady   <none>   21s   v1.17.0
 
 Now, let's look at the pods running on the cluster: you can see that some 
 pods are now running on the slave nodes as well:
 
 tso@laptop:~$ kubectl get pods --all-namespaces -o wide
-NAMESPACE              NAME                                         READY   STATUS    RESTARTS   AGE     IP           NODE         NOMINATED NODE   READINESS GATES
-kube-system            coredns-6955765f44-bmkd4                     1/1     Running   0          74m     10.244.0.2   master   <none>           <none>
-kube-system            coredns-6955765f44-kjbdn                     1/1     Running   0          74m     10.244.0.3   master   <none>           <none>
-kube-system            etcd-master                              1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
-kube-system            kube-apiserver-master                    1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
-kube-system            kube-controller-manager-master           1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
-kube-system            kube-flannel-ds-amd64-ctm9c                  1/1     Running   1          4m23s   10.0.2.15    slave2   <none>           <none>
-kube-system            kube-flannel-ds-amd64-qzbwg                  1/1     Running   0          58m     10.0.2.15    master   <none>           <none>
-kube-system            kube-flannel-ds-amd64-x52cp                  1/1     Running   0          4m32s   10.0.2.15    slave1   <none>           <none>
-kube-system            kube-proxy-45csc                             1/1     Running   0          4m23s   10.0.2.15    slave2   <none>           <none>
-kube-system            kube-proxy-c9mmr                             1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
-kube-system            kube-proxy-z4vlc                             1/1     Running   0          4m32s   10.0.2.15    slave1   <none>           <none>
-kube-system            kube-scheduler-master                    1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
-kubernetes-dashboard   dashboard-metrics-scraper-76585494d8-8qztj   1/1     Running   0          50m     10.244.0.5   master   <none>           <none>
-kubernetes-dashboard   kubernetes-dashboard-5996555fd8-2gfcr        1/1     Running   0          50m     10.244.0.4   master   <none>           <none>
+NAMESPACE              NAME                                         READY   STATUS    RESTARTS   AGE     IP          NODE     NOMINATED NODE   READINESS GATES
+kube-system            coredns-6955765f44-5qgrs                     1/1     Running   0          23m     10.32.0.2   master   <none>           <none>
+kube-system            coredns-6955765f44-v29s9                     1/1     Running   0          23m     10.32.0.3   master   <none>           <none>
+kube-system            etcd-master                                  1/1     Running   0          23m     10.0.2.15   master   <none>           <none>
+kube-system            kube-apiserver-master                        1/1     Running   0          23m     10.0.2.15   master   <none>           <none>
+kube-system            kube-controller-manager-master               1/1     Running   0          23m     10.0.2.15   master   <none>           <none>
+kube-system            kube-proxy-2qmq7                             1/1     Running   0          29s     10.0.2.15   slave2   <none>           <none>
+kube-system            kube-proxy-6kn74                             1/1     Running   0          23m     10.0.2.15   master   <none>           <none>
+kube-system            kube-proxy-wbb28                             1/1     Running   0          59s     10.0.2.15   slave1   <none>           <none>
+kube-system            kube-scheduler-master                        1/1     Running   0          23m     10.0.2.15   master   <none>           <none>
+kube-system            weave-net-5vw9s                              1/2     Running   0          29s     10.0.2.15   slave2   <none>           <none>
+kube-system            weave-net-c5hd4                              2/2     Running   0          18m     10.0.2.15   master   <none>           <none>
+kube-system            weave-net-qlpr5                              2/2     Running   1          59s     10.0.2.15   slave1   <none>           <none>
+kubernetes-dashboard   dashboard-metrics-scraper-76585494d8-5slbj   1/1     Running   0          9m15s   10.32.0.5   master   <none>           <none>
+kubernetes-dashboard   kubernetes-dashboard-5996555fd8-94p8b        1/1     Running   0          9m15s   10.32.0.4   master   <none>           <none>
 
 
 YES!!! The cluster is up and running and the master is actually scheduling 
