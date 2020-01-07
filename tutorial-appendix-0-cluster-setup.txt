@@ -93,28 +93,22 @@ Note: in order to save time, you can jump directly as the section 2.4 and set
 ### Few informations will be unique to each deployement and you need to 
 ### carefully copy and save these informations in order to adapt the commands 
 ### as shown in the tutorial (i.e. replace the tutorial's info with yours) and 
-### run your own version of the commands:
+### run your own version of the commands.
 ###
-### 1) the ip@ of the VMs: in the automated deployment, we set fixed ip@ for 
-### the VMs, but these ip@ are allocated dynamically during the manual 
-### implementation.
+### The ip@ of the VMs: in the automated deployment, we set fixed ip@ for the 
+### VMs, but these ip@ may allocated dynamically during the manual 
+### implementation, unless configured otherwise.
 ###
-### In the tutorial, I used (copied from a real execution):
-###    master:  192.168.0.134
-###    slave 1: 192.168.0.132
-###    slave 2: 192.168.0.133
-### The ip@ granted to each VM by the host machine will vary from execution of
-### this tutorial to another, so please collect the ip@as you will start the 
+### In writing the tutorial, I set a name and a static IP for each machine:
+###
+###     NAME    IP@ (in the private network)
+###     master  192.168.1.200
+###     slave1  192.168.1.201
+###     slave2  192.168.1.202
+###
+### The ip@ granted to each VM by the host machine may vary from one execution 
+### of this tutorial to another, so please collect the ip@as you will start the 
 ### VMs and keep this information for the whole duration of the tutorial.
-###
-### 2) the token required for a node to join into the cluster
-###
-### In the following examples, I used:
-###
-### kubeadm join 192.168.0.134:6443 --token 2693ts.tkmiic8k3ngfa96l \
-    --discovery-token-ca-cert-hash sha256:3f151eb58176dd4473f58b1d8db39b9aa64b13a06f4accc6d60b68a0a5612beb 
-###
-### YOU WILL NEED TO USE YOUR OWN INFORMATION AS SHOWN IN SECTION 4
 ###
 
 =========================
@@ -125,7 +119,7 @@ Note: in order to save time, you can jump directly as the section 2.4 and set
 
 Nothing fancy here: we've built from the Ubuntu Server 18.04 LTS, with:
   - two CPUs (it is mandatory to run a Kubernetes master)
-  - 4096 MB memeory for the Master, and 2048 MB memory for the Slaves
+  - 4096 MB memory for the Master, and 2048 MB memory for the Slaves
   - two network interfaces:
        * one NAT (which is default setting) for internet connectivity
        * one configured in a "Bridge Adapter" mode, pointing on the most 
@@ -146,7 +140,7 @@ nodes, we then need to log as root and (in this order):
 
 For convenience, in this tutorial, we will configure the VMs by connecting 
 into them via ssh from terminals running on the host machine, using the 
-default admin profile (login=thierry, password=thierry) (secure, huh!!!). 
+default admin profile (login=tuto, password=tuto) (secure, huh!!!). 
 There are few advantages doing so, namely the fact that the prompt then tells 
 on which machine you are actually logged, which is very convenient when you 
 will have 3 VMs running at the same time.
@@ -159,52 +153,52 @@ your first loging into the VM from the VM window:
 Open a terminal and - as a regular user on the host machine, ssh into the VM:
 (in my case, the hostname of my laptop is 'laptop' and my login is 'tso')
 
-tso@laptop:~$ ssh thierry@192.168.0.134
+tso@laptop:~$ ssh tuto@192.168.1.200
 
 The first time you connect on a remote machine, you're asked to confirm: 
 confirm by typing 'yes' and then enter the password:
 
-The authenticity of host '192.168.0.134 (192.168.0.134)' can't be established.
+The authenticity of host '192.168.1.200 (192.168.1.200)' can't be established.
 ECDSA key fingerprint is SHA256:blStegSimd9FZS74HYnmTW4CxvNY0gI2LDP7YCcbuzY.
 Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added '192.168.0.134' (ECDSA) to the list of known hosts.
-thierry@192.168.0.134's password: 
+Warning: Permanently added '192.168.1.200' (ECDSA) to the list of known hosts.
+tuto@192.168.1.200's password: 
 
 You are now connected on the VM and your prompt will show it:
 
 (K8s BARE - 6 - Login from a terminal)
 
-thierry@k8s_node:~$
+tuto@kubernetes:~$
 
-You are logged as 'thierry' (the name of the account on the VM) and not 
+You are logged as 'tuto' (the name of the account on the VM) and not 
 anymore as 'tso' (the name of the account on the host machine) and you are on 
-'k8s_node'* and not on 'laptop' anymore.
+'kubernetes'* and not on 'laptop' anymore.
 
 *: the initial name of the machine is whatever you have specified when 
 building the fist image from the Ubuntu OS in VirtualBox. I used the generic 
-name 'k8s_node' because the same VM will later be used to configure both 
+name 'kubernetes' because the same VM will later be used to configure both 
 master and slave nodes.
 
 
 We must do the following steps as 'root':
 
-thierry@k8s_node:~$ sudo su
+tuto@kubernetes:~$ sudo su
 
-The prompt becomes 'root@k8s_node:/#' and we can continue the next steps.
+The prompt becomes 'root@kubernetes:/#' and we can continue the next steps.
 
 We will install docker: collect the certificates, add the signing key to the 
 local apt repository, add the docker repository... and finally install docker:
 
-root@k8s_node:/# apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
-root@k8s_node:/# curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg | apt-key add -
-root@k8s_node:/# add-apt-repository "deb https://download.docker.com/linux/debian stretch stable"
-root@k8s_node:/# apt-get update
-root@k8s_node:/# apt-get install -y docker-ce
+root@kubernetes:/# apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
+root@kubernetes:/# 
+root@kubernetes:/# add-apt-repository "deb https://download.docker.com/linux/debian stretch stable"
+root@kubernetes:/# apt-get update
+root@kubernetes:/# apt-get install -y docker-ce
 
 Then we must disable the swap: we do so immediately with the "swappoff" 
 command:
 
-root@k8s_node:/# swapoff -a
+root@kubernetes:/# swapoff -a
 
 and we also prevent the swap to be re-activated at next boot, by editing the 
 fstab file (/etc/fstab) and disable the line indicating the swap partition 
@@ -224,10 +218,10 @@ We will then install Kubernetes: collect the certificates, add the signing
 key to the local apt repository, add the google kubernetes repository... and 
 finally install kubernetes:
 
-root@k8s_node:/# curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-root@k8s_node:/# add-apt-repository "deb http://apt.kubernetes.io/ kubernetes-bionic main"
-root@k8s_node:/# apt-get update
-root@k8s_node:/# apt-get install -y kubelet kubeadm kubectl
+root@kubernetes:/# curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+root@kubernetes:/# add-apt-repository "deb http://apt.kubernetes.io/ kubernetes-bionic main"
+root@kubernetes:/# apt-get update
+root@kubernetes:/# apt-get install -y kubelet kubeadm kubectl
 
 
 Here we are !!!
@@ -267,35 +261,35 @@ cluster).
 
 So we will edit two files: /etc/hosts and /etc/hostname
 
-Log into the first VM (in our case 'ssh thierry@192.168.0.134) and edit the
+Log into the first VM (in our case 'ssh tuto@192.168.1.200) and edit the
 file /etc/hostname: replace the previous host name (k8s-node) with the new
-host name 'k8s-master'.
+host name 'master'.
 
-Then edit the file /etc/hosts and add the new name 'k8s-master' after
+Then edit the file /etc/hosts and add the new name 'master' after
 '127.0.0.1   localhost'.
 
 After edition, it should look like this:
 
-thierry@k8s-master:~$ cat /etc/hostname 
-k8s-master
+tuto@master:~$ cat /etc/hostname 
+master
 
-thierry@k8s-master:~$ cat /etc/hosts
-127.0.0.1 localhost k8s-master
-127.0.1.1 k8s_node
+tuto@master:~$ cat /etc/hosts
+127.0.0.1 localhost master
+127.0.1.1 kubernetes
 
 Log out and log in again, and the prompt should look like:
 
-thierry@k8s-master:~$ 
+tuto@master:~$ 
 
 Then do so on the two other machines (respectively at 192.168.0.132 and 
-192.168.0.133) with the new host names 'k8s-slave1' and 'k8s-slave2'. The 
+192.168.0.133) with the new host names 'slave1' and 'slave2'. The 
 prompt on these two machines should look like:
 
-thierry@k8s-slave1:~$ 
+tuto@slave1:~$ 
 
 and
 
-thierry@k8s-slave2:~$ 
+tuto@slave2:~$ 
 
 Interestingly, the prompt will always tell you on which machine and which 
 account you are a given moment in time, which will be important in order not 
@@ -325,7 +319,7 @@ SSH onto the Master node and log as root. To initiate the cluster, we will use
     - specifiy that the master node must advertise its own IP@ in order to 
       enable the slave nodes to first connect to the master node.
 
-root@k8s-master:/# kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.0.134
+root@master:/# kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.1.200
 
 The whole setup can take a bit of time, and it should conclude with displaying 
 the following message (truncated):
@@ -353,7 +347,7 @@ Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
 
 Then you can join any number of worker nodes by running the following on each as root:
 
-kubeadm join 192.168.0.134:6443 --token 2693ts.tkmiic8k3ngfa96l \
+kubeadm join 192.168.1.200:6443 --token 2693ts.tkmiic8k3ngfa96l \
     --discovery-token-ca-cert-hash sha256:3f151eb58176dd4473f58b1d8db39b9aa64b13a06f4accc6d60b68a0a5612beb 
 
 
@@ -378,27 +372,27 @@ So, let's follow these directives.
 
 The next step is to configure the 'regular' user (i.e. not root) on the 
 master node who will manage the cluster, and on the host machine. First we 
-logout as 'root' but we stay logged as 'thierry' on the master, and as a 
-'thierry' we enter the commands given in the initialization message:
+logout as 'root' but we stay logged as 'tuto' on the master, and as a 
+'tuto' we enter the commands given in the initialization message:
 
-thierry@k8s-master:~$ mkdir -p $HOME/.kube
-thierry@k8s-master:~$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-thierry@k8s-master:~$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+tuto@master:~$ mkdir -p $HOME/.kube
+tuto@master:~$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+tuto@master:~$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 Here you are, the config file is properly copied in the .kube directory, with 
 appropriate rights:
 
-thierry@k8s-master:~$ ll .kube/
+tuto@master:~$ ll .kube/
 total 16
-drwxrwxr-x 2 thierry thierry 4096 Dec 27 15:25 ./
-drwxr-xr-x 5 thierry thierry 4096 Dec 27 15:25 ../
--rw------- 1 thierry thierry 5449 Dec 27 15:25 config
-thierry@k8s-master:~$ cat .kube/config 
+drwxrwxr-x 2 tuto tuto 4096 Dec 27 15:25 ./
+drwxr-xr-x 5 tuto tuto 4096 Dec 27 15:25 ../
+-rw------- 1 tuto tuto 5449 Dec 27 15:25 config
+tuto@master:~$ cat .kube/config 
 apiVersion: v1
 clusters:
 - cluster:
     certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FUR [...] S0tLQo=
-    server: https://192.168.0.134:6443
+    server: https://192.168.1.200:6443
   name: kubernetes
 contexts:
 - context:
@@ -435,13 +429,13 @@ sub-directory, named 'weave-v1.10.yaml'.
 
 From the host machine, we copy the configuration file on the Master node:
 
-tso@laptop:~$ scp /projects/learn-kubernetes/deploy-cluster-vm/source/weave-v1.10.yaml thierry@192.168.0.134:~/.
-thierry@192.168.0.134's password: 
+tso@laptop:~$ scp /projects/learn-kubernetes/deploy-cluster-vm/source/weave-v1.10.yaml tuto@192.168.1.200:~/.
+tuto@192.168.1.200's password: 
 weave-v1.10.yamll                                100%   14KB  10.8MB/s   00:00
 
 Then back from the master, we deploy this network configuration:
 
-thierry@k8s-master:~$ kubectl apply -f weave-v1.10.yaml
+tuto@master:~$ kubectl apply -f weave-v1.10.yaml
 serviceaccount "weave-net" created
 clusterrole "weave-net" created
 clusterrolebinding "weave-net" created
@@ -456,7 +450,7 @@ show the pods running on the master with the command 'get pods': see the
 results at several seconds distance, and observe that the pods status evolve as 
 their get from 'Pending' to 'ContainerCreating' and finally to 'Running'.
 
-thierry@k8s-master:~$ kubectl get pods --all-namespaces
+tuto@master:~$ kubectl get pods --all-namespaces
 NAMESPACE     NAME                              READY     STATUS    RESTARTS   AGE
 kube-system   etcd-kube-01                      1/1       Running   0          5m
 kube-system   kube-apiserver-kube-01            1/1       Running   0          6m
@@ -493,7 +487,7 @@ ones we used to create the directory and file on the master node). Log again as
 the laptop:
 
 tso@laptop:~$ mkdir -p $HOME/.kube
-tso@laptop:~$ scp -r thierry@192.168.0.134:~/.kube/config ~/.kube/
+tso@laptop:~$ scp -r thierry@192.168.1.200:~/.kube/config ~/.kube/
 tso@laptop:~$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 Here you are: you now can manage the Kubernetes cluster from the host machine. 
@@ -511,7 +505,7 @@ KubeDNS is running at https://192.168.0.63:6443/api/v1/namespaces/kube-system/se
 
 tso@laptop:~$ kubectl get nodes
 NAME         STATUS   ROLES    AGE     VERSION
-k8s-master   Ready    master   9m      v1.17.0
+master   Ready    master   9m      v1.17.0
 tso@laptop:~$ kubectl get services -o wide
 
 As you can see, the master is still alone; you have not yet joined a slave 
@@ -553,8 +547,8 @@ command:
 First copy the configuration files from the 'yaml' sub-directory to the 
 Master, with teh following command:
 
-tso@laptop:~$ scp /projects/get-started/kubernetes/yaml/dashboard* thierry@192.168.0.134:~/
-thierry@192.168.0.134's password: 
+tso@laptop:~$ scp /projects/get-started/kubernetes/yaml/dashboard* thierry@192.168.1.200:~/
+thierry@192.168.1.200's password: 
 dashboard-adminrole.yaml                        100%  270   629.8KB/s   00:00
 dashboard-adminuser.yaml                        100%  100   279.3KB/s   00:00
 dashboard-v200b8-recommended.yaml               100% 7568    12.3MB/s   00:00
@@ -562,7 +556,7 @@ dashboard-v200b8-recommended.yaml               100% 7568    12.3MB/s   00:00
 You can verify that the 3 files are well copies on the home directory on the 
 Master:
 
-thierry@k8s-master:~$ ll
+thierry@master:~$ ll
 total 68
 drwxr-xr-x 5 thierry thierry  4096 Dec 27 15:41 ./
 drwxr-xr-x 3 root    root     4096 Dec  5 22:55 ../
@@ -580,7 +574,7 @@ drwxrwxr-x 4 thierry thierry  4096 Dec 27 15:36 .kube/
 -rw-r--r-- 1 thierry thierry 14416 Dec 27 15:34 kube-flannel.yaml
 
 
-thierry@k8s-master:~$ kubectl apply -f dashboard-v200b8-recommended.yaml
+thierry@master:~$ kubectl apply -f dashboard-v200b8-recommended.yaml
 namespace/kubernetes-dashboard created
 serviceaccount/kubernetes-dashboard created
 service/kubernetes-dashboard created
@@ -604,20 +598,20 @@ the host machine:
 
 tso@laptop:~$ kubectl get pods --all-namespaces -o wide
 NAMESPACE              NAME                                         READY   STATUS    RESTARTS   AGE     IP           NODE         NOMINATED NODE   READINESS GATES
-kube-system            coredns-6955765f44-md48q                     1/1     Running   0          18m     10.244.0.3   k8s-master   <none>           <none>
-kube-system            coredns-6955765f44-wklk8                     1/1     Running   0          18m     10.244.0.2   k8s-master   <none>           <none>
-kube-system            etcd-k8s-master                              1/1     Running   0          19m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-apiserver-k8s-master                    1/1     Running   0          19m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-controller-manager-k8s-master           1/1     Running   0          19m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-flannel-ds-amd64-5wktw                  1/1     Running   0          5m45s   10.0.2.15    k8s-slave1   <none>           <none>
-kube-system            kube-flannel-ds-amd64-8t4wm                  1/1     Running   0          11m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-flannel-ds-amd64-9cpvn                  1/1     Running   0          5m9s    10.0.2.15    k8s-slave2   <none>           <none>
-kube-system            kube-proxy-b5tvt                             1/1     Running   0          5m45s   10.0.2.15    k8s-slave1   <none>           <none>
-kube-system            kube-proxy-hfdfh                             1/1     Running   0          18m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-proxy-w2c4m                             1/1     Running   0          5m9s    10.0.2.15    k8s-slave2   <none>           <none>
-kube-system            kube-scheduler-k8s-master                    1/1     Running   0          19m     10.0.2.15    k8s-master   <none>           <none>
-kubernetes-dashboard   dashboard-metrics-scraper-76585494d8-9dqkl   1/1     Running   0          24s     10.244.1.2   k8s-slave1   <none>           <none>
-kubernetes-dashboard   kubernetes-dashboard-5996555fd8-bwcjx        1/1     Running   0          24s     10.244.2.2   k8s-slave2   <none>           <none>
+kube-system            coredns-6955765f44-md48q                     1/1     Running   0          18m     10.244.0.3   master   <none>           <none>
+kube-system            coredns-6955765f44-wklk8                     1/1     Running   0          18m     10.244.0.2   master   <none>           <none>
+kube-system            etcd-master                              1/1     Running   0          19m     10.0.2.15    master   <none>           <none>
+kube-system            kube-apiserver-master                    1/1     Running   0          19m     10.0.2.15    master   <none>           <none>
+kube-system            kube-controller-manager-master           1/1     Running   0          19m     10.0.2.15    master   <none>           <none>
+kube-system            kube-flannel-ds-amd64-5wktw                  1/1     Running   0          5m45s   10.0.2.15    slave1   <none>           <none>
+kube-system            kube-flannel-ds-amd64-8t4wm                  1/1     Running   0          11m     10.0.2.15    master   <none>           <none>
+kube-system            kube-flannel-ds-amd64-9cpvn                  1/1     Running   0          5m9s    10.0.2.15    slave2   <none>           <none>
+kube-system            kube-proxy-b5tvt                             1/1     Running   0          5m45s   10.0.2.15    slave1   <none>           <none>
+kube-system            kube-proxy-hfdfh                             1/1     Running   0          18m     10.0.2.15    master   <none>           <none>
+kube-system            kube-proxy-w2c4m                             1/1     Running   0          5m9s    10.0.2.15    slave2   <none>           <none>
+kube-system            kube-scheduler-master                    1/1     Running   0          19m     10.0.2.15    master   <none>           <none>
+kubernetes-dashboard   dashboard-metrics-scraper-76585494d8-9dqkl   1/1     Running   0          24s     10.244.1.2   slave1   <none>           <none>
+kubernetes-dashboard   kubernetes-dashboard-5996555fd8-bwcjx        1/1     Running   0          24s     10.244.2.2   slave2   <none>           <none>
 
 Here you can see that a pod is running with the name 'dashboard'. However, 
 even if the dashboard is actually running, you still cannot access it. To get 
@@ -661,7 +655,7 @@ metadata:
   namespace: kubernetes-dashboard
 
 Then run the command:
-thierry@k8s-master:~$ kubectl apply -f dashboard-adminuser.yaml
+thierry@master:~$ kubectl apply -f dashboard-adminuser.yaml
 serviceaccount/admin-user created
 
 5.3 - Bind the role of the sample user to the Cluster admin
@@ -689,7 +683,7 @@ subjects:
   namespace: kubernetes-dashboard
 
 Then run the command:
-thierry@k8s-master:~$ kubectl apply -f dashboard-adminrole.yaml
+thierry@master:~$ kubectl apply -f dashboard-adminrole.yaml
 clusterrolebinding.rbac.authorization.k8s.io/admin-user created
 
 
@@ -698,7 +692,7 @@ clusterrolebinding.rbac.authorization.k8s.io/admin-user created
 
 Now we need to find THE token we can use to log in. Execute following command:
 
-thierry@k8s-master:~$ kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
+thierry@master:~$ kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
 Name:         admin-user-token-z67cg
 Namespace:    kubernetes-dashboard
 Labels:       <none>
@@ -731,7 +725,7 @@ Since the web server is running on the Master (since we have activated only
 one node in the cluster so far), let's try to connect directly from the 
 Master (knowing that the default port is probably 80):
 
-thierry@k8s-master:~$ curl http://localhost/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
+thierry@master:~$ curl http://localhost/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
 curl: (7) Failed to connect to localhost port 80: Connection refused
 
 As expected, the connection is refused: we will run a proxy from a different 
@@ -740,18 +734,18 @@ we will try again to connect from the Master:
 
 From another terminal:
 
-thierry@Ubuntu-thierry:~$ ssh thierry@192.168.0.134
-thierry@192.168.0.134's password: 
+thierry@Ubuntu-thierry:~$ ssh thierry@192.168.1.200
+thierry@192.168.1.200's password: 
 Welcome to Ubuntu 18.04.3 LTS (GNU/Linux 4.15.0-72-generic x86_64)
 ...
 Last login: Fri Dec 27 15:14:16 2019 from 192.168.0.23
-thierry@k8s-master:~$ kubectl proxy -p 8070
+thierry@master:~$ kubectl proxy -p 8070
 Starting to serve on 127.0.0.1:8070
 
 Now we will try again to access the dashboard from the Master, back on the 
 previous terminal and using the proxied port 8070:
 
-thierry@k8s-master:~$ curl http://localhost:8070/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
+thierry@master:~$ curl http://localhost:8070/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
 {
   "kind": "Status",
   "apiVersion": "v1",
@@ -817,7 +811,7 @@ service running right now, the 'Kubernetes' service (i.e. Kubernetes is
 monitoring itself via the dashboard, the same wat it will monitor your 
 applications).
 
-If you go on the 'Nodes' tab, you will see that 'k8s-master' is the only node 
+If you go on the 'Nodes' tab, you will see that 'master' is the only node 
 running so far. Click on its name, and you get a detailed status of the node: 
 go down and see the 'Allocation' section which shows the resources consummed 
 (vs the sizing of the node), and further down the 'Pods' section shows the 
@@ -840,12 +834,12 @@ It's now time to join the two slaves into the cluster. To do so, we need to
 log into the slave nodes (with ssh), as 'root', and use the token and key 
 which were displayed at the end of the cluster initialisation message:
 
-root@k8s-slave1:/# kubeadm join 192.168.0.134:6443 --token 2693ts.tkmiic8k3ngfa96l \
+root@slave1:/# kubeadm join 192.168.1.200:6443 --token 2693ts.tkmiic8k3ngfa96l \
     --discovery-token-ca-cert-hash sha256:3f151eb58176dd4473f58b1d8db39b9aa64b13a06f4accc6d60b68a0a5612beb 
 
 and then:
 
-root@k8s-slave2:/# kubeadm join 192.168.0.134:6443 --token 2693ts.tkmiic8k3ngfa96l \
+root@slave2:/# kubeadm join 192.168.1.200:6443 --token 2693ts.tkmiic8k3ngfa96l \
     --discovery-token-ca-cert-hash sha256:3f151eb58176dd4473f58b1d8db39b9aa64b13a06f4accc6d60b68a0a5612beb 
 
 Come back to the laptop and check the status of the cluster. Check the number 
@@ -853,46 +847,46 @@ of nodes as they get enlisted and active into the cluster:
 
 thierry@Ubuntu-thierry:~$ kubectl get nodes
 NAME         STATUS   ROLES    AGE   VERSION
-k8s-master   Ready    master   69m   v1.17.0
+master   Ready    master   69m   v1.17.0
 thierry@Ubuntu-thierry:~$ kubectl get nodes
 NAME         STATUS     ROLES    AGE   VERSION
-k8s-master   Ready      master   70m   v1.17.0
-k8s-slave1   NotReady   <none>   0s    v1.17.0
+master   Ready      master   70m   v1.17.0
+slave1   NotReady   <none>   0s    v1.17.0
 thierry@Ubuntu-thierry:~$ kubectl get nodes
 NAME         STATUS     ROLES    AGE   VERSION
-k8s-master   Ready      master   70m   v1.17.0
-k8s-slave1   NotReady   <none>   10s   v1.17.0
-k8s-slave2   NotReady   <none>   1s    v1.17.0
+master   Ready      master   70m   v1.17.0
+slave1   NotReady   <none>   10s   v1.17.0
+slave2   NotReady   <none>   1s    v1.17.0
 thierry@Ubuntu-thierry:~$ kubectl get nodes
 NAME         STATUS     ROLES    AGE   VERSION
-k8s-master   Ready      master   70m   v1.17.0
-k8s-slave1   NotReady   <none>   29s   v1.17.0
-k8s-slave2   Ready      <none>   20s   v1.17.0
+master   Ready      master   70m   v1.17.0
+slave1   NotReady   <none>   29s   v1.17.0
+slave2   Ready      <none>   20s   v1.17.0
 thierry@Ubuntu-thierry:~$ kubectl get nodes
 NAME         STATUS   ROLES    AGE   VERSION
-k8s-master   Ready    master   70m   v1.17.0
-k8s-slave1   Ready    <none>   31s   v1.17.0
-k8s-slave2   Ready    <none>   22s   v1.17.0
+master   Ready    master   70m   v1.17.0
+slave1   Ready    <none>   31s   v1.17.0
+slave2   Ready    <none>   22s   v1.17.0
 
 Now, let's look at the pods running on the cluster: you can see that some 
 pods are now running on the slave nodes as well:
 
 tso@laptop:~$ kubectl get pods --all-namespaces -o wide
 NAMESPACE              NAME                                         READY   STATUS    RESTARTS   AGE     IP           NODE         NOMINATED NODE   READINESS GATES
-kube-system            coredns-6955765f44-bmkd4                     1/1     Running   0          74m     10.244.0.2   k8s-master   <none>           <none>
-kube-system            coredns-6955765f44-kjbdn                     1/1     Running   0          74m     10.244.0.3   k8s-master   <none>           <none>
-kube-system            etcd-k8s-master                              1/1     Running   0          74m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-apiserver-k8s-master                    1/1     Running   0          74m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-controller-manager-k8s-master           1/1     Running   0          74m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-flannel-ds-amd64-ctm9c                  1/1     Running   1          4m23s   10.0.2.15    k8s-slave2   <none>           <none>
-kube-system            kube-flannel-ds-amd64-qzbwg                  1/1     Running   0          58m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-flannel-ds-amd64-x52cp                  1/1     Running   0          4m32s   10.0.2.15    k8s-slave1   <none>           <none>
-kube-system            kube-proxy-45csc                             1/1     Running   0          4m23s   10.0.2.15    k8s-slave2   <none>           <none>
-kube-system            kube-proxy-c9mmr                             1/1     Running   0          74m     10.0.2.15    k8s-master   <none>           <none>
-kube-system            kube-proxy-z4vlc                             1/1     Running   0          4m32s   10.0.2.15    k8s-slave1   <none>           <none>
-kube-system            kube-scheduler-k8s-master                    1/1     Running   0          74m     10.0.2.15    k8s-master   <none>           <none>
-kubernetes-dashboard   dashboard-metrics-scraper-76585494d8-8qztj   1/1     Running   0          50m     10.244.0.5   k8s-master   <none>           <none>
-kubernetes-dashboard   kubernetes-dashboard-5996555fd8-2gfcr        1/1     Running   0          50m     10.244.0.4   k8s-master   <none>           <none>
+kube-system            coredns-6955765f44-bmkd4                     1/1     Running   0          74m     10.244.0.2   master   <none>           <none>
+kube-system            coredns-6955765f44-kjbdn                     1/1     Running   0          74m     10.244.0.3   master   <none>           <none>
+kube-system            etcd-master                              1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
+kube-system            kube-apiserver-master                    1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
+kube-system            kube-controller-manager-master           1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
+kube-system            kube-flannel-ds-amd64-ctm9c                  1/1     Running   1          4m23s   10.0.2.15    slave2   <none>           <none>
+kube-system            kube-flannel-ds-amd64-qzbwg                  1/1     Running   0          58m     10.0.2.15    master   <none>           <none>
+kube-system            kube-flannel-ds-amd64-x52cp                  1/1     Running   0          4m32s   10.0.2.15    slave1   <none>           <none>
+kube-system            kube-proxy-45csc                             1/1     Running   0          4m23s   10.0.2.15    slave2   <none>           <none>
+kube-system            kube-proxy-c9mmr                             1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
+kube-system            kube-proxy-z4vlc                             1/1     Running   0          4m32s   10.0.2.15    slave1   <none>           <none>
+kube-system            kube-scheduler-master                    1/1     Running   0          74m     10.0.2.15    master   <none>           <none>
+kubernetes-dashboard   dashboard-metrics-scraper-76585494d8-8qztj   1/1     Running   0          50m     10.244.0.5   master   <none>           <none>
+kubernetes-dashboard   kubernetes-dashboard-5996555fd8-2gfcr        1/1     Running   0          50m     10.244.0.4   master   <none>           <none>
 
 
 YES!!! The cluster is up and running and the master is actually scheduling 
