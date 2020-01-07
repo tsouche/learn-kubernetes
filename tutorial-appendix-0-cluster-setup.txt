@@ -737,7 +737,7 @@ Since the web server is running on the Master (since we have activated only
 one node in the cluster so far), let's try to connect directly from the 
 Master (knowing that the default port is probably 80):
 
-thierry@master:~$ curl http://localhost/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
+thierry@master:~$ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
 curl: (7) Failed to connect to localhost port 80: Connection refused
 
 As expected, the connection is refused: we will run a proxy from a different 
@@ -746,18 +746,18 @@ we will try again to connect from the Master:
 
 From another terminal:
 
-thierry@Ubuntu-thierry:~$ ssh thierry@192.168.1.200
-thierry@192.168.1.200's password: 
+tuto@laptop:~$ ssh tuto@192.168.1.200
+tuto@192.168.1.200's password: 
 Welcome to Ubuntu 18.04.3 LTS (GNU/Linux 4.15.0-72-generic x86_64)
 ...
 Last login: Fri Dec 27 15:14:16 2019 from 192.168.0.23
-thierry@master:~$ kubectl proxy -p 8070
-Starting to serve on 127.0.0.1:8070
+thierry@master:~$ kubectl proxy -p 8001
+Starting to serve on 127.0.0.1:8001
 
 Now we will try again to access the dashboard from the Master, back on the 
-previous terminal and using the proxied port 8070:
+previous terminal and using the proxied port 8001:
 
-thierry@master:~$ curl http://localhost:8070/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard/version:/proxy/
+tuto@master:~$ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 {
   "kind": "Status",
   "apiVersion": "v1",
