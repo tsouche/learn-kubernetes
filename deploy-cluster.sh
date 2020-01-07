@@ -23,7 +23,7 @@ help_message()
     # display the help message
     echo "This script will deploy a 3-nodes Kubernetes cluster. You must indicate"
     echo "the type of deployment you want:"
-    echo "   deploy-cluster 'argument'"
+    echo "    ./deploy-cluster.sh 'argument'"
     echo "where 'argument is:"
     echo "    -c, --containers         it will deploy the cluster on containers"
     echo "    -v, --virtualmachines    it will deploy the cluster on VMs"
