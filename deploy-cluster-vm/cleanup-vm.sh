@@ -21,7 +21,7 @@ echo " "
 rm -rf ~/.kube
 rm -rf ./.kube
 rm -rf ./.vagrant
-rm -rf ./temp
+rm -rf ./temp*
 
 echo "======================================================================="
 echo " The END"
