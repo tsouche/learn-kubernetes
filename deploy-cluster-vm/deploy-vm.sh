@@ -16,7 +16,8 @@ else if ((NUM_NODES > nb_nodes_max)); then
     echo "Please try again with at least $nb_nodes_min and up to $nb_nodes_max nodes."
 else
 	# We have a proper number of slave nodes: we start deploying
-	export NUM_SLAVES=$NUM_NODES-1
+	
+    echo " "
     echo "We will now deploy a Kubernetes cluster of $NUM_NODES nodes on your laptop."
     echo "Be patient, since it may take a bit of time to spawn all the VMs..."
     echo " "
@@ -86,7 +87,7 @@ else
 	echo "======================================================================="
 	echo "..."
 
-	vagrant up
+	export NUM_SLAVES=$(($NUM_NODES-1)) && echo "NUM_SLAVES = $NUM_SLAVES" && vagrant up
 
 	echo "======================================================================="
 	echo "copy .kube/config in local home"

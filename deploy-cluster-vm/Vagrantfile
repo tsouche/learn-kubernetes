@@ -4,14 +4,17 @@
 # This vagrant file will setup n+1 VMs based on Ubuntu server, to deploy a
 # Kubernetes cluster (1 master and 'num_slaves' slaves)
 
+# set cluster dimensions
+num_slaves  = ENV['NUM_SLAVES']     # number of Slave nodes to be generated
+num_slaves = num_slaves.to_i        # converts the string into an integer
+
 # Set configuration variables
 config_VM_shared  = "bootstrap_shared_base.sh"
 config_VM_master  = "bootstrap_master.sh"
 config_VM_slave   = "bootstrap_slave.sh"
 config_cleanup    = "bootstrap_cleanup.sh"
 
-# set cluster dimensions
-num_slaves  = ENV['NUM_SLAVES']     # number of Slave nodes to be generated
+# Set VM caracteristics
 master_cpus = 2                     # Master's CPUs number
 master_mem  = 4096                  # Master's memory size
 slave_cpus  = 1                     # Slaves' CPUs number
@@ -26,6 +29,9 @@ cluster_init_token = "#{random_string1[0..5]}.#{random_string2[0..15]}"
 
 
 Vagrant.configure("2") do |config|
+
+  config.vm.provision "shell", inline: "echo #{ENV['NUM_SLAVES']}"
+  config.vm.provision "shell", inline: "echo #{num_slaves}"
 
   # Build the base from a clean Ubuntu 18.04 server
   config.vm.box = "bento/ubuntu-18.04"
