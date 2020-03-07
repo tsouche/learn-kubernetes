@@ -77,13 +77,26 @@ echo "..."
 # create user 'thierry' (pwd='') with sudo privilege
 
 echo "======================================================================="
-echo "Create user 'thierry'"
+echo "Create user 'tuto'"
 echo "======================================================================="
 echo "..."
 
-adduser --disabled-password --gecos "" thierry
-usermod -aG sudo thierry
-usermod -aG docker thierry
+adduser --disabled-password --gecos "" tuto
+usermod -aG sudo tuto
+usermod -aG docker tuto
+
+echo "..."
+echo "done"
+echo "..."
+
+# install Ceph (which will be needed for rook) 
+
+echo "======================================================================="
+echo "Install Ceph"
+echo "======================================================================="
+echo "..."
+
+apt-get install -y ceph-fs-common ceph-common
 
 echo "..."
 echo "done"
