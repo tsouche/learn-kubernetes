@@ -22,7 +22,7 @@ representative, and b) because the versions of main components changed 3 times
 during the writing of this tutorial... each change generating regressions: this 
 is a good lesson learned about 'managing open source components in a system'.
 
-The second emthod appeared pretty fast as a good option to secure the timely 
+The second method appeared pretty fast as a good option to secure the timely 
 delivery of the tutorial, in order to onboard the frst student: it is fast, 
 reasonably simple and it requires only a small hardware. However, I experienced 
 at elast one version change even with Kind, with for isntance the need to align 
