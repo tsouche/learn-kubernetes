@@ -22,6 +22,10 @@ Kubernetes coordinates a highly available cluster of computers that are connecte
 
 Containerized applications are more flexible and available than in past deployment models, where applications were installed directly onto specific machines as packages deeply integrated into the host. Kubernetes automates the distribution and scheduling of application containers across a cluster in a more efficient way.
 
+![alt txt](./images/tuto-1-tuto-1-goals.png "Architecture Overview")
+
+But beyond the gain of moving from physical to *another-type-of-virtual infrastructure*, Kubernetes brings a total automation of the basic operation of the applications running on it: beyond just orchestrating containers, it actually manages teh whole lifecycle of applications.
+
 ### 1.2 - K8s Community Mindset
 
 I have decided to quote here the introduction of the project by the community itself, as it is to me exemplary of the 'mindset' which has enabled to set one of the most formidable open source platform ever (to which maybe only linux can be compared), both in its remarkable engineering foundations, but also in the way this 'mindset' is day-in-day out demonstrated in action.
@@ -41,7 +45,7 @@ I have decided to quote here the introduction of the project by the community it
 
 Kubernetes is a production-grade, open-source infrastructure for the deployment scaling, management, and composition of application containers across clusters of hosts, inspired by previous work at Google.Kubernetes is more than just a “container orchestrator.” It aims to eliminate the burden of orchestrating physical/virtual compute, network, and storage infrastructure, and enable application operators and developers to focus entirely on container-centric primitives for self-service operation. Kubernetes also provides a stable, portable foundation (a platform) for building customized workflows and higher-level automation.
 
-![alt txt](./images/Kubernetes-architecture.png "Architec Overview")
+![alt txt](./images/tuto-1-kubernetes-architecture.png "Architecture Overview")
 
 Kubernetes is primarily targeted at applications composed of multiple containers. It therefore groups containers using ***pods*** and ***labels*** into tightly coupled and loosely coupled formations for easy management and discovery.
 
@@ -68,6 +72,8 @@ A running Kubernetes cluster contains:
 * one or several ***Master(s)*** which operate the cluster control plane (AKA Master), and
 * several ***Nodes*** which communicate with and are managed by the Master thanks to the Kubernetes REST APIs.
 * several ***Pods*** which are groups of containers which compose an application: Kubernetes enable to run an application by its ability to orchestrates pods on the cluster's nodes.
+
+![alt txt](./images/tuto-1-cluster-overview.png "cluster overview")
 
 The ***Master*** is responsible for managing the cluster. The master coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates.
 
@@ -116,6 +122,8 @@ One of the most important notion to acquire is how to properly describe a 'desir
 
 The Kubernetes **node** runs the services necessary to host application containers and be managed from the master systems:
 
+![alt txt](./images/tuto-1-node-overview.png "a typical Pods")
+
 * ### Kubelet
   The most important and most prominent controller in Kubernetes is the ***Kubelet***, which is the primary implementer of the Pod and Node APIs, that drive the container execution layer. Without these APIs, Kubernetes would just be a CRUD-oriented REST application framework backed by a key-value store.
 
@@ -133,15 +141,36 @@ The Kubernetes **node** runs the services necessary to host application containe
   The service abstraction provides a way to group pods under a common access policy (e.g., load-balanced). The implementation of this creates a virtual IP which clients can access and which is transparently proxied to the pods in a Service. Each node runs a ``kube-proxy`` process which programs iptables rules to trap access to service IPs and redirect them to the correct backends. This provides a highly-available load-balancing solution with low performance overhead by balancing client traffic from a node on that same node.
   Service endpoints are found primarily via DNS.
 
+### 2.6 - Add-ons
 
-### 2.6 - Pods
+Contrarily to Kubernetes native components, ***Addons*** use Kubernetes resources (DaemonSet , Deployment , etc) to implement cluster features. Because these are providing cluster-level features, namespaced resources for addons belong within the kube-system namespace. In other words, the add-ons are truely part of the *system* but they are managed almost like any application you would deploy on Kubernetes.
+
+Let's emntion few add-ons
+
+* ### DNS
+  While the other addons are not strictly required, all Kubernetes clusters should have cluster DNS, as many examples rely on it. Cluster DNS is a DNS server, in addition to the other DNS server(s) in your environment, which serves DNS records for Kubernetes services.
+  Containers started by Kubernetes automatically include this DNS server in their DNS searches.
+* ### Web UI (the Dashboard)
+  Dashboard is a general purpose, web-based UI for Kubernetes clusters. It allows users to manage and troubleshoot applications running in the cluster, as well as the cluster itself.
+  The Dashboard is the UI version of `kubectl`: it only passes API calls to the Master, and restitutes the answers in a graphical format. One could also say that `kubectl` is CLI version of the Dashboard ;-).
+* ### Container Resource Monitoring
+  Container Resource Monitoring records generic time-series metrics about containers in a central database, and provides a UI for browsing that data.
+* ### Cluster-level Logging
+  A cluster-level logging mechanism is responsible for saving container logs to a central log store with search/browsing interface.
+
+
+### 2.7 - Pods
 
 When you deploy an application on a cluster, Kubernetes creates a **Pod** to host your application instance. A Pod is a Kubernetes abstraction that represents a group of one or more application containers, and some shared resources for those containers. Those resources include:
 * Shared storage, as **Volumes**
 * Networking, as a unique **cluster IP address**
 * Information about how to run each container, such as the container image version or specific ports to use...
 
+![alt txt](./images/tuto-1-pod-overview-1.png "a typical Pod")
+
 A Pod models an application-specific "logical host" and can contain different application containers which are relatively tightly coupled. For example, a Pod might include both the container with your Node.js app as well as a different container that feeds the data to be published by the Node.js webserver. The containers in a Pod share an IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.
+
+![alt txt](./images/tuto-1-pod-overview-2.png "various Pods")
 
 Pods are the **atomic unit** on the Kubernetes platform. When we create a Deployment on Kubernetes, that Deployment creates Pods with containers inside them (as opposed to creating containers directly).
 
