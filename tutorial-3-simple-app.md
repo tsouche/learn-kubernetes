@@ -1079,69 +1079,47 @@ the Deployment, but we will not get into this level of details here.
 
 
 
-7 - Update Your App
-===================
+## 7 - Update Your App
+
+### 7.1 - Updating an application
+
+Users expect applications to be available all the time and developers are expected to deploy new versions of them several times a day. In Kubernetes this is done with rolling updates. Rolling updates allow Deployments' update to take place with zero downtime by incrementally updating Pods instances with new ones. The new Pods will be scheduled on Nodes with available resources.
+
+In the previous module, we scaled our application to run multiple instances. This is a requirement for performing updates without affecting application availability. By default, the maximum number of Pods that can be unavailable during the update and the maximum number of new Pods that can be created, is one. Both options can be configured to either numbers or percentages (of Pods). In Kubernetes, updates are versioned and any Deployment update can be reverted to previous (stable) version.
 
 
-7.1 - Updating an application
-=============================
-
-Users expect applications to be available all the time and developers are
-expected to deploy new versions of them several times a day. In Kubernetes
-this is done with rolling updates. Rolling updates allow Deployments' update
-to take place with zero downtime by incrementally updating Pods instances with
-new ones. The new Pods will be scheduled on Nodes with available resources.
-
-In the previous module we scaled our application to run multiple instances.
-This is a requirement for performing updates without affecting application
-availability. By default, the maximum number of Pods that can be unavailable
-during the update and the maximum number of new Pods that can be created, is
-one. Both options can be configured to either numbers or percentages (of
-Pods). In Kubernetes, updates are versioned and any Deployment update can be
-reverted to previous (stable) version.
-
-
-7.2 - Rolling updates overview
-==============================
+### 7.2 - Rolling updates overview
 
 (image: "update your app - 1")
 (image: "update your app - 2")
 (image: "update your app - 3")
 (image: "update your app - 4")
 
-Similar to application Scaling, if a Deployment is exposed publicly, the
-Service will load-balance the traffic only to available Pods during the
-update. An available Pod is an instance that is available to the users of the
-application.
+Similar to application Scaling, if a Deployment is exposed publicly, the Service will load-balance the traffic only to available Pods during the update. An available Pod is an instance that is available to the users of the application.
 
 Rolling updates allow the following actions:
-
-    - Promote an application from one environment to another (via container
-        image updates)
-    - Rollback to previous versions
-    - Continuous Integration and Continuous Delivery of applications with zero
-        downtime
+* Promote an application from one environment to another (via container image updates)
+* Rollback to previous versions
+* Continuous Integration and Continuous Delivery of applications with zero downtime
 
 
-7.3 - Update the version of the app
-===================================
+### 7.3 - Update the version of the app
 
 To list your deployments use the get deployments command:
-
+```
 tuto@laptop:~$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   2/2     2            2           31m
-
+```
 To list the running Pods use the get pods command:
-
+```
 tuto@laptop:~$ kubectl get pods
 NAME                     READY   STATUS    RESTARTS   AGE
 hello-5bfc654f49-bvbw5   1/1     Running   0          31m
 hello-5bfc654f49-hbpjq   1/1     Running   0          10m
-
-To view the current image version of the app, run a describe command against
-the Pods (look at the Image field):
-
+```
+To view the current image version of the app, run a `describe` command against the Pods (look at the Image field):
+```
 tuto@laptop:~$ kubectl describe pods
 Name:         hello-5bfc654f49-bvbw5
 Namespace:    default
@@ -1199,20 +1177,16 @@ Events:
   Normal  Pulled     11m   kubelet, newyear-worker  Container image "tsouche/learn-kubernetes:part3" already present on machine
   Normal  Created    11m   kubelet, newyear-worker  Created container learn-kubernetes
   Normal  Started    11m   kubelet, newyear-worker  Started container learn-kubernetes
+```
 
-
-To update the image of the application to version 2, use the set image
-command, followed by the deployment name and the new image version:
-
-
+To update the image of the application to version 2, use the `set image` command, followed by the deployment name and the new image version:
+```
 tuto@laptop:~$ kubectl set image deployment/hello learn-kubernetes=tsouche/learn-kubernetes:part3v2
 deployment.apps/hello image updated
+```
 
-
-The command notified the Deployment to use a different image for your app and
-initiated a rolling update. Check the status of the new Pods, and view the old
-one terminating with the get pods command:
-
+The command notified the Deployment to use a different image for your app and initiated a rolling update. Check the status of the new Pods, and view the old one terminating with the `get pods` command:
+```
 tuto@laptop:~$ kubectl get pods -o wide
 NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE             NOMINATED NODE   READINESS GATES
 hello-5bfc654f49-bvbw5   1/1     Running             0          65m   10.244.1.2   newyear-worker   <none>           <none>
@@ -1244,33 +1218,22 @@ tuto@laptop:~$ kubectl get pods -o wide
 NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
 hello-85b6f6f55c-25vtd   1/1     Running   0          94s   10.244.1.6   newyear-worker    <none>           <none>
 hello-85b6f6f55c-ts57p   1/1     Running   0          73s   10.244.2.8   newyear-worker2   <none>           <none>
+```
+Following the progress of the update, you see new Pods being created, and as the update progresses, old Pods being terminated, while the Deployment Controller always keeps (at least) the desired number of Pods active.
 
-Following the progress of the update, you see new Pods being created, and as
-the update progresses, old Pods being terminated, while the Deployment
-Controller always keeps (at least) the desired number of Pods active.
+Since during a certain transition period both versions are active at the same time, the end users would not all get exactly the same experience: some will still hit the `v1` version, while other will already hit the `v2` version. However, this transition period may be kept reasonably short... if everything happens nominal.
 
-Since during a certain transition period both versions are active at the same
-time, the end users would not all get exactly the same experience: some will
-still hit the v1 version, while other will already hit the v2 version.
-However, this transition period may be kept reasonably short... if everything
-happens nominal.
-
-Also, note that the two v1 Pods were running on the same slave
-('newyear-worker') while the two v2 Pods are balanced across the two slaves.
+Also, note that the two `v1` Pods were running on the same slave ('newyear-worker') while the two `v2` Pods are balanced across the two slaves.
 
 
-7.4 - Verify an update
-======================
+### 7.4 - Verify an update
 
-First, let’s check that the App is running. To find out the exposed IP and
-Port we can use describe service:
-
+First, let’s check that the App is running. To find out the exposed IP and Port we can use describe service:
+```
 tuto@laptop:~$ kubectl describe services/hello
-
-The NodePort did not change (since the update took place within the service
-which kept up), and neither did the EntryPoint for the whole cluster, so we
-can still poll the service at the same URL:
-
+```
+The `NodePort` did not change (since the update took place within the service which kept up), and neither did the `EntryPoint` for the whole cluster, so we can still poll the service at the same URL:
+```
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-25vtd<br/>
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
@@ -1283,19 +1246,19 @@ tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-ts57p<br/>
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-ts57p<br/>
-
+```
 So we can observe that:
-    - we hit a different Pod with every request, and
-    - all Pods are running the latest version (v2).
+* we hit a different Pod with every request, and
+* all Pods are running the latest version (v2).
 
 The update can be confirmed also by running a rollout status command:
-
+```
 tuto@laptop:~$ kubectl rollout status deployments/hello
 deployment "hello" successfully rolled out
-
+```
 To view the current image version of the app, run a describe command against
 the Pods:
-
+```
 tuto@laptop:~$ kubectl describe deployment/hello
 Name:                   hello
 Namespace:              default
@@ -1316,40 +1279,37 @@ Pod Template:
     Host Port:    <none>
     Environment:  <none>
 [...]
+```
+We run now the version 2 of the app!
 
-We run now version 2 of the app!
 
-
-7.5 - Rollback an update
-==========================
+### 7.5 - Rollback an update
 
 Let’s perform another update, and deploy image tagged as v10 :
-
+```
 tuto@laptop:~$ kubectl set image deployment/hello learn-kubernetes=tsouche/learn-kubernetes:part3v10
 deployment.apps/hello image updated
-
+```
 Use get deployments to see the status of the deployment:
-
+```
 tuto@laptop:~$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   2/2     1            2           81m
-
-And something is wrong… We do not have the desired number of Pods available.
-List the Pods again:
-
+```
+And something is wrong… We do not have the desired number of Pods available. List the Pods again:
+```
 tuto@laptop:~$ kubectl get pods -o wide
 NAME                     READY   STATUS             RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
 hello-68f977cb64-5fbcj   0/1     ImagePullBackOff   0          27s   10.244.1.7   newyear-worker    <none>           <none>
 hello-85b6f6f55c-25vtd   1/1     Running            0          17m   10.244.1.6   newyear-worker    <none>           <none>
 hello-85b6f6f55c-ts57p   1/1     Running            0          16m   10.244.2.8   newyear-worker2   <none>           <none>
-
+```
 A describe command on the Pods should give more insights:
-
+```
 tuto@laptop:~$ kubectl describe pods
-
-The output is, as usually, very verbose, so we isolate only the events
-associated to the first Pod:
-
+```
+The output is, as usual, very verbose, so we isolate only the events associated to the first Pod:
+```
 Events:
   Type     Reason     Age                From                     Message
   ----     ------     ----               ----                     -------
@@ -1359,19 +1319,15 @@ Events:
   Normal   Pulling    7s (x3 over 53s)   kubelet, newyear-worker  Pulling image "tsouche/learn-kubernetes:part3v10"
   Warning  Failed     5s (x3 over 51s)   kubelet, newyear-worker  Failed to pull image "tsouche/learn-kubernetes:part3v10": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/tsouche/learn-kubernetes:part3v10": failed to resolve reference "docker.io/tsouche/learn-kubernetes:part3v10": docker.io/tsouche/learn-kubernetes:part3v10: not found
   Warning  Failed     5s (x3 over 51s)   kubelet, newyear-worker  Error: ErrImagePull
+```
 
-
-There is no image tagged 'part3v10' in the repository, so Kuber,etes is not
-able to pull the image/. Let’s roll back to our previously working version.
-We’ll use the rollout undo command:
-
+There is no image tagged `part3v10` in the repository, so Kubernetes is not able to pull the image. Let’s roll back to our previously working version. We’ll use the `rollout undo` command:
+```
 tuto@laptop:~$ kubectl rollout undo deployments/hello
 deployment.apps/hello rolled back
-
-The rollout command reverted the deployment to the previous known state
-(v2 of the image). Updates are versioned and you can revert to any previously
-know state of a Deployment. List again the Pods:
-
+```
+The rollout command reverted the deployment to the previous known state (v2 of the image). Updates are versioned and you can revert to any previously know state of a Deployment. List again the Pods:
+```
 tuto@laptop:~$kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   2/2     2            2           83m
@@ -1380,27 +1336,19 @@ tuto@laptop:~$ kubectl get pods -o wide
 NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
 hello-85b6f6f55c-25vtd   1/1     Running   0          18m   10.244.1.6   newyear-worker    <none>           <none>
 hello-85b6f6f55c-ts57p   1/1     Running   0          18m   10.244.2.8   newyear-worker2   <none>           <none>
-
+```
 Two Pods are running. Check again the image deployed on the them:
-
+```
 tuto@laptop:~$ kubectl describe pods
+```
+We see that the deployment is using a stable version of the `app` (v2). The Rollback was successful.
 
-We see that the deployment is using a stable version of the app (v2). The
-Rollback was successful.
 
+## 8 - Conclusion
 
-8 - Conclusion
-==============
+At this step in the tutorial, you know how to deploy a stateless app on the cluster, and how to manage simple operations like a scaling in and out, or a version update.
 
-At this step in the tutorial, you know how to deploy a stateless app on the
-cluster, and how to manage simple operations like a scaling in and out, or a
-version update.
-
-Let's make it clear however that this is greatly simplified by 1) the high
-level of automation made possible through Kubernetes: you actually only
-managed 'labels', and every command we did though kubectl could have been done
-by managing YAML files (i.e. by updating YAML files and feeding these files to
-the Master) or by directly accessing the REST APIs like the dashboard does.
+Let's make it clear however that this is greatly simplified by the high level of automation made possible through Kubernetes: you actually only managed 'labels', and every command we did though `kubectl` could have been done by managing `YAML` files (i.e. by updating `YAML` files and feeding these files to the Master) or by directly accessing the REST APIs like the dashboard does.
 
 It is time now to get into slightly more complex things like a...
 ... stateful app: let's get to Part 4 of the tutorial.
