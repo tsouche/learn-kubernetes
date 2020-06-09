@@ -143,36 +143,23 @@ As explained in Part 1, Pods are the atomic unit on the Kubernetes platform.
 
 ### 4.2 - Nodes
 
-A Pod always runs on a Node. A Node is a worker machine in Kubernetes and may
-be either a virtual or a physical machine, depending on the cluster. Each Node
-is managed by the Master. A Node can have multiple pods, and the Kubernetes
-Master automatically handles scheduling the pods across the Nodes in the
-cluster. The Master's automatic scheduling takes into account the available
-resources on each Node.
+A Pod always runs on a Node. A Node is a worker machine in Kubernetes and may be either a virtual or a physical machine, depending on the cluster. Each Node is managed by the Master. A Node can have multiple pods, and the Kubernetes Master automatically handles scheduling the pods across the Nodes in the cluster. The Master's automatic scheduling takes into account the available resources on each Node.
 
 Every Kubernetes Node runs at least:
+* `Kubelet`, a process responsible for communication between the Kubernetes Master and the Node; it manages the Pods and the containers running on a machine.
+* A container runtime (like `Docker`, `rkt`) responsible for pulling the container image from a registry, unpacking the container, and running the application.
 
-    - Kubelet, a process responsible for communication between the Kubernetes
-        Master and the Node; it manages the Pods and the containers running on
-        a machine.
-    - A container runtime (like Docker, rkt) responsible for pulling the
-        container image from a registry, unpacking the container, and running
-        the application.
+![alt txt](./images/tuto-1-node-overview.png "Node overview")
 
-Containers should only be scheduled together in a single Pod if they are
-tightly coupled and need to share resources such as disk.
+Containers should only be scheduled together in a single Pod if they are tightly coupled and need to share resources such as disk.
 
-Node overview (image "view your app - node overview")
 
 
 4.3 - Check the application configuration
 =========================================
 
-We already have checked the pods with kubectl, so we know that a
-kubernetes-bootcamp pod runs on the slave 2. Now, let's view what containers
-are inside that Pod and what images are used to build those containers. To do
-so, we run the describe pods command:
-
+We already have checked the pods with `kubectl`, so we know that a `kubernetes-bootcamp` pod runs on the `slave 2`. Now, let's view what containers are inside that Pod and what images are used to build those containers. To do so, we run the describe pods command:
+```
 tuto@laptop:~$ kubectl describe pods
 Name:         hello-5bfc654f49-bvbw5
 Namespace:    default
@@ -224,31 +211,23 @@ Events:
   Normal  Pulled     105s  kubelet, newyear-worker  Successfully pulled image "tsouche/learn-kubernetes:part3"
   Normal  Created    102s  kubelet, newyear-worker  Created container learn-kubernetes
   Normal  Started    102s  kubelet, newyear-worker  Started container learn-kubernetes
+```
+
+Whaou... Plenty of information is available, as you can see: IP address, the ports used and a list of events related to the lifecycle of the Pod.
+
+The output of the describe command is extensive and covers some concepts that we didn’t explain yet, but don’t worry, they will become familiar by the end of this bootcamp.
+
+> Note: the `describe` command can be used to get detailed information about most of the kubernetes primitives: node, pods, deployments. The describe output is designed to be human readable, not to be scripted against.
 
 
-Whaou... Plenty of information is available, as you can see: IP address, the
-ports used and a list of events related to the lifecycle of the Pod.
+### 4.4 - Show the app in the terminal
 
-The output of the describe command is extensive and covers some concepts that
-we didn’t explain yet, but don’t worry, they will become familiar by the end
-of this bootcamp.
+Recall that Pods are running in an isolated, private network - so we continue with the `kubectl proxy` command in a second terminal window (on port 8001).
 
-    Note: the describe command can be used to get detailed information about
-        most of the kubernetes primitives: node, pods, deployments. The
-        describe output is designed to be human readable, not to be scripted
-        against.
+You have store the Pod name in the `POD_NAME` environment variable.
 
-
-4.4 - Show the app in the terminal
-===================================
-
-Recall that Pods are running in an isolated, private network - so we continue
-with the kubectl proxy command in a second terminal window (on port 8001).
-
-You have store the Pod name in the POD_NAME environment variable.
-
-To see the output of our application, run a curl request.
-
+To see the output of our application, run a `curl` request.
+```
 tuto@laptop:~$ kubectl get namespace
 NAME                   STATUS   AGE
 default                Active   10m
@@ -398,31 +377,22 @@ tuto@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NA
     "qosClass": "BestEffort"
   }
 }
-
+```
 Pretty verbose, huh...
-At least, it enables to demonstrate that we can access the cluster from the
-host machine, and poll directly the REST APIs to retrieve information about
-the currently rdeployed applications. Interestingly, doing so manually, we
-operate exactly the same way kubectl or the dashboard do: they poll the REST
-APIs exposed by the cluster.
-
-
+At least, it enables to demonstrate that we can access the cluster from the host machine, and poll directly the REST APIs to retrieve information about the currently deployed applications. Interestingly, doing so manually, we operate exactly the same way `kubectl` or the dashboard do: they poll the REST APIs exposed by the cluster.
 
 The url structure is self explicit:
-    - it specifies the API version (v1 since versions 1.15 at least)
-    - it then indicated the namespaces (here: 'default')
-    - and then indicates the resource we need to poll (pods, deployment...).
-      In our case, we indicate 'pods' and which Pod (with its name) we want
-      information on.
+* it specifies the API version (v1 since versions 1.15 at least)
+* it then indicated the namespaces (here: `default`)
+* and then indicates the resource we need to poll (pods, deployment...).
+
+In our case, we indicate 'pods' and which Pod (with its name) we want information on.
 
 
-4.5 - View the container logs
-=============================
+### 4.5 - View the container logs
 
-Anything that the application would normally send to STDOUT becomes logs for
-the container within the Pod. We can retrieve these logs using the kubectl
-logs command:
-
+Anything that the application would normally send to `STDOUT` becomes logs for the container within the Pod. We can retrieve these logs using the `kubectl logs` command:
+```
 tuto@laptop:~$ kubectl logs $POD_NAME
  * Serving Flask app "app" (lazy loading)
  * Environment: production
@@ -430,22 +400,15 @@ tuto@laptop:~$ kubectl logs $POD_NAME
    Use a production WSGI server instead.
  * Debug mode: off
  * Running on http://0.0.0.0:80/ (Press CTRL+C to quit)
+```
+
+We can see everything that the application sent to `stdout`, because we have not set a proper `syslog` in the app or in the container. Obviously, in a real environment, the logs would be sent towards a syslog agent, and Kubernetes would then manage the redirection of the logs to the log management system (outside Kubernetes).
 
 
-We can see everything that the application sent to 'stdout', because we have
-not set a proper syslog in teh app or in the container. Obviously, in a real
-environment, the logs would be sent towards a syslog agent, and Kubernetes
-would then manage the redirection of the logs to the log management system
-(outside Kubernetes).
+### 4.6 - Executing command inside the container
 
-
-4.6 - Executing command inside the container
-============================================
-
-We can execute commands directly in the container once the Pod is up and
-running. For this, we use the exec command and use the name of the Pod as a
-parameter. Let’s list the environment variables:
-
+We can execute commands directly in the container once the Pod is up and running. For this, we use the `exec command` and use the name of the Pod as a parameter. Let’s list the environment variables:
+```
 tuto@laptop:~$ kubectl exec $POD_NAME env
 PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 HOSTNAME=hello-5bfc654f49-bvbw5
@@ -465,142 +428,88 @@ KUBERNETES_SERVICE_PORT=443
 KUBERNETES_SERVICE_PORT_HTTPS=443
 KUBERNETES_PORT=tcp://10.96.0.1:443
 HOME=/root
+```
 
-
-Again, worth mentioning that the name of the container itself can be omitted
-since we only have a single container in the Pod.
+Again, worth mentioning that the name of the container itself can be omitted since we only have a single container in the Pod.
 
 Next let’s start a bash session in the Pod’s container:
-
+```
 tuto@laptop:~$ kubectl exec -ti $POD_NAME bash
 root@hello-5bfc654f49-bvbw5:/app#
+```
+We have now an open console on the container where we run our Python application, and we are logged as root. The source code of the app is in the `app.py` file:
+```
+  root@hello-5bfc654f49-bvbw5:/app# cat app.py
+  from flask import Flask
+  import os
+  import socket
 
-We have now an open console on the container where we run our Python
-application, and we are logged as root. The source code of the app is in the
-app.py file:
+  app = Flask(__name__)
 
-root@hello-5bfc654f49-bvbw5:/app# cat app.py
-from flask import Flask
-import os
-import socket
+  @app.route("/")
+  def hello():
+      html = "<h3>Hello {name}!</h3>" \
+             "<b>Hostname:</b> {hostname}<br/>"
+      return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
 
+  if __name__ == "__main__":
+      app.run(host='0.0.0.0', port=80)
+```
 
-app = Flask(__name__)
-
-@app.route("/")
-def hello():
-    html = "<h3>Hello {name}!</h3>" \
-           "<b>Hostname:</b> {hostname}<br/>"
-    return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80)
-
-
-You can check that the application is up by running a curl command:
-
+You can check that the application is up by running a `curl` command:
+```
 root@hello-5bfc654f49-bvbw5:/app# curl localhost:80
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
-
-    Note: here we used localhost:80 because we executed the command inside the
-        container inside the Pod. Outside the container, the port 8001 is
-        exposed. If you cannot connect to localhost:80, check to make sure
-        you have run the kubectl exec command and are launching the command
-        from within the Pod
+```
+> Note: here we used `localhost:80` because we executed the command inside the container inside the Pod. Outside the container, the port 8001 is exposed. If you cannot connect to localhost:80, check to make sure you have run the `kubectl exec command` and are launching the command from within the Pod
 
 To close your container connection type "exit".
-
+```
 root@hello-5bfc654f49-bvbw5:/app# exit
 exit
 tuto@laptop:~$
+```
+
+## 5 - Expose Your App Publicly
 
 
+### 5.1 - Overview of Kubernetes Services
 
-5 - Expose Your App Publicly
-============================
+Kubernetes Pods are mortal. Pods in fact have a lifecycle. When a worker node dies, the Pods running on the Node are also lost. A `ReplicaSet` might then dynamically drive the cluster back to desired state via creation of new Pods to keep your application running. As another example, consider an image-processing backend with 3 replicas. Those replicas are exchangeable; the front-end system should not care about backend replicas or even if a Pod is lost and recreated. That said, each Pod in a Kubernetes cluster has a unique IP address, even Pods on the same Node, so there needs to be a way of automatically reconciling changes among Pods so that your applications continue to function.
 
+A `Service` in Kubernetes is an abstraction which defines a logical set of Pods and a policy by which to access them. Services enable a loose coupling between dependent Pods. A Service is defined using `YAML` (preferred) or `JSON`, like all Kubernetes objects. The set of Pods targeted by a Service is usually determined by a `LabelSelector`: a `LabelSelector` is a the usual way Kubernetes will identify the right pods.
 
-5.1 - Overview of Kubernetes Services
-=====================================
-
-Kubernetes Pods are mortal. Pods in fact have a lifecycle. When a worker node
-dies, the Pods running on the Node are also lost. A ReplicaSet might then
-dynamically drive the cluster back to desired state via creation of new Pods
-to keep your application running. As another example, consider an
-image-processing backend with 3 replicas. Those replicas are exchangeable; the
-front-end system should not care about backend replicas or even if a Pod is
-lost and recreated. That said, each Pod in a Kubernetes cluster has a unique
-IP address, even Pods on the same Node, so there needs to be a way of
-automatically reconciling changes among Pods so that your applications
-continue to function.
-
-A Service in Kubernetes is an abstraction which defines a logical set of Pods
-and a policy by which to access them. Services enable a loose coupling between
-dependent Pods. A Service is defined using YAML (preferred) or JSON, like all
-Kubernetes objects. The set of Pods targeted by a Service is usually
-determined by a LabelSelector: a LabelSelector is a the usual way Kubernetes
-will identify the right pods.
-
-Although each Pod has a unique IP address, those IPs are not exposed outside
-the cluster without a Service. Services allow your applications to receive
-traffic (from outside or from other applications runnig on the same cluster).
-Services can be exposed in different ways by specifying a type in the
-ServiceSpec:
-
-    - ClusterIP (default) - Exposes the Service on an internal IP in the
-        cluster. This type makes the Service only reachable from within the
-        cluster, by other services running on the same cluster.
-    - NodePort - Exposes the Service on the same port of each selected Node in
-        the cluster using NAT. Makes a Service accessible from outside the
-        cluster using <NodeIP>:<NodePort>. Superset of ClusterIP.
-        The principle here is that the <NodeIP> is shared by all services
-        running on the same cluster: they only differentiate one from another
-        by their port number. This is very convenient to enable a controlled
-        communication between services, typically when they should primarily
-        get exposed via an API gateway which will handle security and access
-        rights.
-    - LoadBalancer - Creates an external load balancer in the current cloud
-        (if supported) and assigns a fixed, external IP to the Service.
-        Superset of NodePort.
-        Here, the service has its own IP and its own (set of) port(s): it is
-        very easily reacheable from outside the cluster, which implies that it
-        must embed security by design.
-    - ExternalName - Exposes the Service using an arbitrary name (specified by
-        externalName in the spec) by returning a CNAME record with the name.
-        No proxy is used (requires v1.7 or higher of kube-dns).
+Although each Pod has a unique IP address, those IPs are not exposed outside the cluster without a `Service`. `Services` allow your applications to receive traffic (from outside or from other applications runnig on the same cluster). `Services` can be exposed in different ways by specifying a type in the `ServiceSpec`:
+* #### ClusterIP (default)
+Exposes the `Service` on an internal IP in the cluster. This type makes the Service only reachable from within the cluster, by other services running on the same cluster.
+* #### NodePort
+Exposes the Service on the same port of each selected Node in the cluster using NAT. Makes a Service accessible from outside the cluster using `<NodeIP>:<NodePort>`.
+The principle here is that the `<NodeIP>` is shared by all services running on the same cluster: they only differentiate one from another by their port number. This is very convenient to enable a controlled communication between services, typically when they should primarily get exposed via an API gateway which will handle security and access rights.
+* #### LoadBalancer
+Creates an external load balancer in the current cloud (if supported) and assigns a fixed, external IP to the Service.
+Here, the service has its own IP and its own (set of) port(s): it is very easily reacheable from outside the cluster, which implies that it must embed security by design.
+* ### ExternalName
+Exposes the Service using an arbitrary name (specified by `externalName` in the spec) by returning a `CNAME` record with the name. No proxy is used.
 
 
-Additionally, note that there are some use cases with Services that involve
-not defining selector in the spec. A Service created without selector will
-also not create the corresponding Endpoints object. This allows users to
-manually map a Service to specific endpoints. Another possibility why there
-may be no selector is you are strictly using type: ExternalName.
+Additionally, note that there are some use cases with `Services` that involve not defining selector in the spec. A `Service` created without selector will also not create the corresponding Endpoints object. This allows users to manually map a `Service` to specific `endpoints`. Another possibility why there may be no selector is you are strictly using type: `ExternalName`.
 
 
-5.2 - Services and Labels
-=========================
-
-(image: "expose your app - 1")
-
-A Service routes traffic across a set of Pods. Services are the abstraction
-that allow pods to die and replicate in Kubernetes without impacting your
-application. Discovery and routing among dependent Pods (such as the frontend
-and backend components in an application) is handled by Kubernetes Services.
-
-Services match a set of Pods using labels and selectors, a grouping primitive
-that allows logical operation on objects in Kubernetes. Labels are key/value
-pairs attached to objects and can be used in any number of ways:
-
-    - Designate objects for development, test, and production
-    - Embed version tags
-    - Classify an object using tags
+### 5.2 - Services and Labels
 
 
-(image: "expose your app - 2")
+![alt txt](./images/tuto-3-expose-your-app-services-and-labels-1.png "Use a 'Service' to expose your app")
 
-Labels can be attached to objects at creation time or later on. They can be
-modified at any time. Let's expose our application now using a Service and
-apply some labels.
+A `Service` routes traffic across a set of Pods. `Services` are the abstraction that allow pods to die and replicate in Kubernetes without impacting your application. Discovery and routing among dependent Pods (such as the frontend and backend components in an application) is handled by Kubernetes Services.
+
+Services match a set of Pods using `labels` and `selectors`, a grouping primitive that allows logical operation on objects in Kubernetes. `Labels` are key/value pairs attached to objects and can be used in any number of ways:
+* Designate objects for development, test, and production
+* Embed version tags
+* Classify an object using tags
+
+    ![alt txt](./images/tuto-3-expose-your-app-services-and-labels-2.png)
+
+Labels can be attached to objects at creation time or later on. They can be modified at any time. Let's expose our application now using a Service and apply some labels.
 
 
 5.3 - Create a new service
