@@ -512,44 +512,42 @@ Services match a set of Pods using `labels` and `selectors`, a grouping primitiv
 Labels can be attached to objects at creation time or later on. They can be modified at any time. Let's expose our application now using a Service and apply some labels.
 
 
-5.3 - Create a new service
-==========================
+### 3.5.3 - Create a new service
 
 
-Let’s verify that our application is running. We’ll use the 'kubectl get'
-command and look for existing Pods:
-
+Let’s verify that our application is running. We’ll use the `kubectl get` command and look for existing Pods:
+```
 tuto@laptop:~$ kubectl get pods
 NAME                     READY   STATUS    RESTARTS   AGE
 hello-5bfc654f49-bvbw5   1/1     Running   0          8m
+```
 
 Next, let’s list the current Services from our cluster:
-
+```
 tuto@laptop:~$ kubectl get services
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   12m
+```
 
-We have a 'Service' called kubernetes that is created by default when the
-cluster starts. To create a new service and expose it to external traffic
-we’ll use the 'expose' command with 'NodePort' as parameter.
-
+We have a `Service` called `kubernetes` that is created by default when the cluster starts. To create a new service and expose it to external traffic we’ll use the `kubectl expose` command with `NodePort` as parameter.
+```
 tuto@laptop:~$ kubectl expose deployment/hello --type="NodePort" --port 80
 service/hello exposed
+```
 
-Let’s run again the get services command:
-
+Let’s run again the `get services` command:
+```
 tuto@laptop:~$ kubectl get services
 NAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
 hello        NodePort    10.96.206.27   <none>        80:31100/TCP   5s
 kubernetes   ClusterIP   10.96.0.1      <none>        443/TCP        12m
+```
 
-Yes: we have now a running Service called 'hello'. Here we see that the
-Service received a unique cluster-IP, an internal port and no external-IP
-(the shared IP of the cluster must be used to access it).
+**Yes!** we have now a running Service called `hello`. Here we see that the `Service` received a unique cluster-IP, an internal port and no external-IP (the shared IP of the cluster must be used to access it).
 
-To find out what port was opened externally (by the NodePort option) we’ll run
-the describe service command:
-
+To find out what port was opened externally (by the `NodePort` option) we’ll run
+the `kubectl describe service` command:
+```
 tuto@laptop:~$ kubectl describe services/hello
 Name:                     hello
 Namespace:                default
@@ -565,16 +563,16 @@ Endpoints:                10.244.1.2:80
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
+```
 
-We ceate an environment variable called NODE_PORT that has the value of the
+We ceate an environment variable called `NODE_PORT` that has the value of the
 Node port assigned:
-
+`
 tuto@laptop:~$ export NODE_PORT=31100
+`
 
-Then we need to identify the external IP which is exposed for the whole
-cluster: this ip is used as the 'endpoint' for the default 'kubernetes'
-service:
-
+Then we need to identify the external IP which is exposed for the whole cluster: this ip is used as the `endpoint` for the default `kubernetes` service:
+```
 tuto@laptop:~$ kubectl describe services/kubernetes
 Name:              kubernetes
 Namespace:         default
@@ -589,27 +587,26 @@ TargetPort:        6443/TCP
 Endpoints:         172.17.0.3:6443
 Session Affinity:  None
 Events:            <none>
+```
 
-Here we can see the cluster's shared Endpoint: 172.17.0.3.
-
+Here we can see the cluster's shared `Endpoint`: `172.17.0.3`.
+```
 tuto@laptop:~$ export ENDPOINT=172.17.0.3
+```
 
-Now that we have both the ip@ (172.17.0.3) and the port (31100), we can test
-that the app is exposed outside of the cluster using curl:
-
+Now that we have both the ip@ (`172.17.0.3`) and the port (`31100`), we can test
+that the app is exposed outside of the cluster using `curl`:
+```
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
-tuto@laptop:~$
-
+```
 And we get a response from the server. The Service is exposed.
 
 
-5.4 - Using labels
-==================
+### 3.5.4 - Using labels
 
-The Deployment created automatically a label for our Pod. With describe
-deployment command, you can see the name of the label:
-
+The `Deployment` created automatically a `label` for our Pod. With `describe deployment` command, you can see the name of the `label`:
+```
 tuto@laptop:~$ kubectl describe deployment
 Name:                   hello
 Namespace:              default
@@ -642,41 +639,39 @@ Events:
   Type    Reason             Age   From                   Message
   ----    ------             ----  ----                   -------
   Normal  ScalingReplicaSet  10m   deployment-controller  Scaled up replica set hello-5bfc654f49 to 1
+```
 
-
-As you can see, the label is 'app' and its value is 'hello', so it appears as
-'app=hello'. Let’s use this label to query our list of Pods. We’ll use the
-kubectl get pods command with -l as a parameter, followed by the label values:
-
+As you can see, the label is '`app`' and its value is '`hello`', so it appears as '`app=hello`'. Let’s use this label to query our list of Pods. We’ll use the `kubectl get pods` command with `-l` as a parameter, followed by the label values:
+```
 tuto@laptop:~$ kubectl get pods -l app=hello
 NAME                     READY   STATUS    RESTARTS   AGE
 hello-5bfc654f49-bvbw5   1/1     Running   0          11m
-
+```
 
 You can do the same to list the existing services:
-
+```
 tuto@laptop:~$ kubectl get services -l app=hello
 NAME    TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
 hello   NodePort   10.96.206.27   <none>        80:31100/TCP   2m59s
+```
 
-
-Get the name of the Pod and store it in the POD_NAME environment variable:
-
+Get the name of the Pod and store it in the `POD_NAME` environment variable:
+```
 tuto@laptop:~$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
 tuto@laptop:~$ echo $POD_NAME
 hello-5bfc654f49-bvbw5
+```
 
-To apply a new label we use the label command followed by the object type,
-object name and the new label: we create the label 'version' and we assign it
-a value of 'v1'.
-
+To apply a new label, we use the `kubectl label` command followed by the object type,
+object name and the new label: we create the label '`version`' and we assign it
+a value of '`v1`'.
+```
 tuto@laptop:~$ kubectl label pod $POD_NAME version=v1
 pod/hello-5bfc654f49-bvbw5 labeled
+```
 
-
-This will apply a new label to our Pod (we pinned the application version to
-the Pod), and we can check it with the describe pod command:
-
+This will apply a new label to our Pod (we pinned the application version to the Pod), and we can check it with the `kubectl describe pod` command:
+```
 tuto@laptop:~$ kubectl describe pods $POD_NAME
 Name:         hello-5bfc654f49-bvbw5
 Namespace:    default
@@ -690,63 +685,58 @@ Annotations:  <none>
 Status:       Running
 IP:           10.244.1.2
 ...
+```
 
-We see here that both 'app' and 'version' labels are attached now to our Pod
-(as well as another label generated by Kubernetes for its own usage). And we
-can query now the list of pods using the new label:
-
+We see here that both '`app`' and '`version`' labels are attached now to our Pod (as well as another label generated by Kubernetes for its own usage). And we can query now the list of pods using the new label:
+```
 tuto@laptop:~$ kubectl get pods -l version=v1
 NAME                     READY   STATUS    RESTARTS   AGE
 hello-5bfc654f49-bvbw5   1/1     Running   0          13m
+```
 
 And we see the Pod.
 
 
-5.5 - Deleting a service
-========================
+### 3.5.5 - Deleting a service
 
-To delete Services you can use the delete service command. Labels can be used
-also here:
-
+To delete Services you can use the `delete service` command. `Labels` can be used also here:
+```
 tuto@laptop:~$ kubectl delete service -l app=hello
 service "hello" deleted
+```
 
 Confirm that the service is gone:
-
+```
 tuto@laptop:~$ kubectl get services
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   18m
+```
 
 This confirms that our Service was removed. To confirm that route is not
-exposed anymore you can curl the previously exposed IP and port:
-
+exposed anymore you can `curl` the previously exposed IP and port:
+```
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 curl: (7) Failed to connect to 172.17.0.3 port 31100: Connection refused
+```
 
+This proves that the app is not reachable anymore from outside of the cluster, but it does NOT imply that the Pods are down: by putting don the `Service`, we only impacted the way the cluster is exposing these Pods to the outside world. But not how they run **within** the cluster.
 
-This proves that the app is not reachable anymore from outside of the cluster,
-but it does NOT imply that the Pods are down: by putting don the 'Service', we
-only impacted the way the cluster is exposing these Pods to the outside world.
-But not how they run WITHIN the cluster.
-
-You can confirm that the app is still running with a curl inside the pod:
-
+You can confirm that the app is still running with a `curl` inside the pod:
+```
 tuto@laptop:~$ kubectl exec -ti $POD_NAME curl localhost:80
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
-tuto@laptop:~$
+```
 
-We see here that the application is up. This is because the Deployment is
-managing the application. To shut down the application, you would need to
-delete the Deployment as well.
+We see here that the application is up. This is because the `Deployment` is managing the application. To shut down the application, you would need to delete the `Deployment` as well.
 
-So let'now restart the service so that we can finish this part of the tutorial:
-
+So let'now restart the `Service` so that we can finish this part of the tutorial:
+```
 tuto@laptop:~$ kubectl expose deployment/hello --type="NodePort" --port 80
 service/hello exposed
+```
 
-And we need to refresh the NodePort value and test that the app is still
-reachable from within the cluster:
-
+And we need to refresh the `NodePort` value and test that the app is still reachable from within the cluster:
+```
 tuto@laptop:~$ kubectl describe svc/hello
 Name:                     hello
 Namespace:                default
@@ -762,110 +752,94 @@ Endpoints:                10.244.1.2:80
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
+```
 
-The NodePort was renewed, and we must refresh our variable:
-
+The `NodePort` was renewed, and we must refresh our variable:
+```
 tuto@laptop:~$ NODE_PORT=31769
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
+```
 
 We're ready for the next section :-)
 
 
-6 - Scale Your App
-==================
+## 3.6 - Scale Your App
+
+### 3.6.1 - Explanation - Scaling an application
+
+In the previous modules we created a `Deployment`, and then exposed it publicly via a `Service`. The `Deployment` created only one Pod for running our application. When traffic increases, we will need to scale the application to keep up with user demand.
+
+![alt txt](./images/tuto-3-scale-your-app-1.png "App with 1 Pod")
+
+Scaling is accomplished by changing the number of replicas in a `Deployment`, i.e. updating the `Deployment` YAML file and change the indicated number of replicas. And that's it: you have nothing else to do.
+
+![alt txt](./images/tuto-3-scale-your-app-2.png "App scaled to 4 Pods")
+
+Scaling out a `Deployment` will ensure new Pods are created and scheduled to Nodes with available resources. Scaling will increase the number of Pods to the new `desired state`. Kubernetes also supports autoscaling of Pods, but we will not see it here in detail. Scaling to zero is also possible, and it will terminate all Pods of the specified Deployment.
+
+Running multiple instances of an application will require a way to distribute the traffic to all of them. `Services` have an integrated load-balancer that will distribute network traffic to all Pods of an exposed `Deployment`. `Services` will monitor continuously the running Pods using endpoints, to ensure the traffic is sent only to available Pods.
+
+Once you have multiple instances of an Application running, you would be able to do Rolling updates without downtime. We'll cover that in the next module. Now, let's go to the online terminal and scale our application.
 
 
-6.1 - Explanation - Scaling an application
-==========================================
-
-In the previous modules we created a Deployment, and then exposed it publicly
-via a Service. The Deployment created only one Pod for running our
-application. When traffic increases, we will need to scale the application to
-keep up with user demand.
-
-Scaling is accomplished by changing the number of replicas in a Deployment.
-
-(image - "scale your app - 1")
-(image - "scale your app - 2")
-
-Scaling out a Deployment will ensure new Pods are created and scheduled to
-Nodes with available resources. Scaling will increase the number of Pods to
-the new desired state. Kubernetes also supports autoscaling of Pods, but we
-will not see it here in detail. Scaling to zero is also possible, and it will
-terminate all Pods of the specified Deployment.
-
-Running multiple instances of an application will require a way to distribute
-the traffic to all of them. 'Services' have an integrated load-balancer that
-will distribute network traffic to all Pods of an exposed Deployment.
-'Services' will monitor continuously the running Pods using endpoints, to
-ensure the traffic is sent only to available Pods.
-
-
-Once you have multiple instances of an Application running, you would be able
-to do Rolling updates without downtime. We'll cover that in the next module.
-Now, let's go to the online terminal and scale our application.
-
-
-6.2 - Scaling a deployment
-===========================
+### 3.6.2 - Scaling a deployment
 
 To list your deployments use the get deployments command:
-
+```
 tuto@laptop:~$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   1/1     1            1           19m
-
+```
 This shows:
-    - READY shows the ratio of CURRENT to DESIRED replicas
-        * CURRENT is the number of replicas running now
-        * DESIRED is the configured number of replicas
-    - UP-TO-DATE is the number of replicas that were updated to match the
-        desired (configured) state
-    - AVAILABLE state shows how many replicas are actually AVAILABLE to the
-        users
+* `READY` shows the ratio of `CURRENT` to `DESIRED` replicas
+  * `CURRENT` is the number of replicas running now
+  * `DESIRED` is the configured number of replicas
+* `UP-TO-DATE` is the number of replicas that were updated to match the desired (configured) state
+* `AVAILABLE` shows how many replicas are actually available to the users
 
-Next, let’s scale the Deployment to 4 replicas. We’ll use the kubectl scale
-command, followed by the deployment type, name and desired number of
-instances:
-
+Next, let’s scale the Deployment to 4 replicas. We’ll use the `kubectl scale` command, followed by the deployment type, name and desired number of instances:
+```
 tuto@laptop:~$ kubectl scale deployments/hello --replicas=4
 deployment.apps/hello scaled
+```
 
-To list your Deployments once again, use get deployments:
-
+To list your Deployments once again, use `get deployments`:
+```
 tuto@laptop:~$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   2/4     4            2           41m
+
 tuto@laptop:~$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   4/4     4            4           41m
+```
 
-The change was applied, and we end up with 4 instances of the application
-available. Next, let’s check if the number of Pods changed:
-
+The change was applied, and we end up with 4 instances of the application available. Next, let’s check if the number of Pods changed:
+```
 tuto@laptop:~$ kubectl get pods -o wide
 NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
 hello-5bfc654f49-bvbw5   1/1     Running             0          20m   10.244.1.2   newyear-worker    <none>           <none>
 hello-5bfc654f49-hbpjq   0/1     ContainerCreating   0          1s    <none>       newyear-worker    <none>           <none>
 hello-5bfc654f49-smdmq   0/1     ContainerCreating   0          1s    <none>       newyear-worker2   <none>           <none>
 hello-5bfc654f49-v8k5q   0/1     ContainerCreating   0          1s    <none>       newyear-worker2   <none>           <none>
+
 tuto@laptop:~$ kubectl get pods -o wide
 NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
 hello-5bfc654f49-bvbw5   1/1     Running             0          20m   10.244.1.2   newyear-worker    <none>           <none>
 hello-5bfc654f49-hbpjq   1/1     Running             0          2s    10.244.1.3   newyear-worker    <none>           <none>
 hello-5bfc654f49-smdmq   0/1     ContainerCreating   0          2s    <none>       newyear-worker2   <none>           <none>
 hello-5bfc654f49-v8k5q   0/1     ContainerCreating   0          2s    <none>       newyear-worker2   <none>           <none>
+
 tuto@laptop:~$ kubectl get pods -o wide
 NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
 hello-5bfc654f49-bvbw5   1/1     Running   0          21m   10.244.1.2   newyear-worker    <none>           <none>
 hello-5bfc654f49-hbpjq   1/1     Running   0          25s   10.244.1.3   newyear-worker    <none>           <none>
 hello-5bfc654f49-smdmq   1/1     Running   0          25s   10.244.2.6   newyear-worker2   <none>           <none>
 hello-5bfc654f49-v8k5q   1/1     Running   0          25s   10.244.2.7   newyear-worker2   <none>           <none>
-
-There are 4 Pods now, with different IP addresses. The change was registered
-in the Deployment events log. To check that, use the describe command:
-
+```
+There are 4 Pods now, with different IP addresses. The change was registered in the Deployment events log. To check that, use the describe command:
+```
 tuto@laptop:~$ kubectl describe deployments/hello
 Name:                   hello
 Namespace:              default
@@ -899,20 +873,15 @@ Events:
   ----    ------             ----  ----                   -------
   Normal  ScalingReplicaSet  21m   deployment-controller  Scaled up replica set hello-5bfc654f49 to 1
   Normal  ScalingReplicaSet  84s   deployment-controller  Scaled up replica set hello-5bfc654f49 to 4
+```
+
+You can also view in the output of this command that there are 4 replicas now. Interestingly, you can also see at the bottom a full history of the Deployment, showing how it was set initially at 1 instance, and then scaled up to 4.
 
 
-You can also view in the output of this command that there are 4 replicas now.
-Interestingly, you can also see at the bottom a full history of the Deployment,
-showing how it was set initially at 1 instance, and then scaled up to 4.
+### 3.6.3 - Load Balancing
 
-
-6.3 - Load Balancing
-====================
-
-Let’s check that the Service is load-balancing the traffic. To find out the
-exposed IP and Port we can use the 'describe service' as we learned in the
-previous section:
-
+Let’s check that the Service is load-balancing the traffic. To find out the exposed IP and Port we can use the `describe service` command as we learned in the previous section:
+```
 tuto@laptop:~$ kubectl describe services/hello
 Name:                     hello
 Namespace:                default
@@ -928,11 +897,10 @@ Endpoints:                10.244.1.2:80,10.244.1.3:80,10.244.2.6:80 + 1 more...
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
+```
 
-The ENDPOINT (the one used for the whole cluster, including the kubernetes
-Service) did not change, so we can now do a curl to the exposed IP and port.
-Execute the command multiple times:
-
+The `ENDPOINT` (the one used for the whole cluster, including the kubernetes Service) did not change, so we can now do a `curl` to the exposed IP and port. Execute the command multiple times:
+```
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-v8k5q<br/>
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
@@ -945,64 +913,71 @@ tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-hbpjq<br/>
+```
+We hit a different Pod with every request. This demonstrates that the load-balancing is working.
 
-We hit a different Pod with every request. This demonstrates that the
-load-balancing is working.
 
+### 3.6.4 - Scale Down
 
-6.4 - Scale Down
-================
-
-To scale down the Service to 2 replicas, run again the scale command:
-
+To scale down the Service to 2 replicas, run again the `scale` command:
+```
 tuto@laptop:~$ kubectl scale deployments/hello --replicas=2
 deployment.apps/hello scaled
+```
 
-List the Deployments to check if the change was applied with the get
-deployments command:
-
+List the Deployments to check if the change was applied with the `get deployments` command:
+```
 tuto@laptop:~$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   2/2     2            2           29m
+```
 
 The number of replicas decreased to 2. List the number of Pods:
-
+```
 tuto@laptop:~$ kubectl get pods -o wide
-thierry@Ubuntu-thierry:~$ kubectl get pods -o wide
 NAME                     READY   STATUS        RESTARTS   AGE     IP           NODE              NOMINATED NODE   READINESS GATES
 hello-5bfc654f49-bvbw5   1/1     Running       0          26m     10.244.1.2   newyear-worker    <none>           <none>
 hello-5bfc654f49-hbpjq   1/1     Running       0          5m45s   10.244.1.3   newyear-worker    <none>           <none>
 hello-5bfc654f49-smdmq   1/1     Terminating   0          5m45s   10.244.2.6   newyear-worker2   <none>           <none>
 hello-5bfc654f49-v8k5q   1/1     Terminating   0          5m45s   10.244.2.7   newyear-worker2   <none>           <none>
+
 tuto@laptop:~$ kubectl get pods -o wide
-thierry@Ubuntu-thierry:~$ kubectl get pods -o wide
 NAME                     READY   STATUS    RESTARTS   AGE     IP           NODE             NOMINATED NODE   READINESS GATES
 hello-5bfc654f49-bvbw5   1/1     Running   0          26m     10.244.1.2   newyear-worker   <none>           <none>
 hello-5bfc654f49-hbpjq   1/1     Running   0          6m18s   10.244.1.3   newyear-worker   <none>           <none>
+```
+
+This confirms that 2 Pods were terminated. You may see that the two remaining Pods are both running on the slave 1, which may not be optimal: this can actually be managed more tightly by setting affinity/anti-affinity rules on the Deployment, but we will not get into this level of details here.
 
 
-This confirms that 2 Pods were terminated. You may see that the two remaining
-Pods are both running on the slave 1, which may not be optimal: this can
-actually be managed more tightly by setting affinity/anti-affinity rules on
-the Deployment, but we will not get into this level of details here.
+## 3.7 - Update Your App
 
-
-
-## 7 - Update Your App
-
-### 7.1 - Updating an application
+### 3.7.1 - Updating an application
 
 Users expect applications to be available all the time and developers are expected to deploy new versions of them several times a day. In Kubernetes this is done with rolling updates. Rolling updates allow Deployments' update to take place with zero downtime by incrementally updating Pods instances with new ones. The new Pods will be scheduled on Nodes with available resources.
 
 In the previous module, we scaled our application to run multiple instances. This is a requirement for performing updates without affecting application availability. By default, the maximum number of Pods that can be unavailable during the update and the maximum number of new Pods that can be created, is one. Both options can be configured to either numbers or percentages (of Pods). In Kubernetes, updates are versioned and any Deployment update can be reverted to previous (stable) version.
 
 
-### 7.2 - Rolling updates overview
+### 3.7.2 - Rolling updates overview
 
-(image: "update your app - 1")
-(image: "update your app - 2")
-(image: "update your app - 3")
-(image: "update your app - 4")
+Let's take an example of an application composed of 4 Pods deployed on 3 Nodes, following a `Deployment` **A**. A `Service` exposes this application with the ip@ set to `10.3.250.236` (visible from within the cluster).
+
+![alt txt](./images/tuto-3-update-your-app-1.png "Update your app - current status")
+
+When you want to update the application, you simply change the `Deployment` **A** YAML file to indicate the `Deployement` that it should use a new image:
+
+![alt txt](./images/tuto-3-update-your-app-2.png "Update your app - step 1")
+
+The Master will spawn a new Pod with the new image, and will shut down the old Pods on the same Node. The new Pod get assigned a new ip@.
+
+![alt txt](./images/tuto-3-update-your-app-3.png "Update your app - step 2")
+
+Continuing the Rolling update, the Master will do the same with a second old Pod: spawn a new Pod and shut down the old Pod.
+
+![alt txt](./images/tuto-3-update-your-app-4.png "Update your app - final status")
+
+At the end of the process, all 4 Pods are new (i.e. with the new image) and the `Service` still is up, with the same ip@ as before the update. Thanks to this, the external worl (i.e. anyone outside the `Service`) has not seen any visible change: the Service was always up, with the same ip@, and the only visible symptom is that -d drunring the update - some request may still be handled by the old version of the paplciation while some other will already be handled by the new version, giving during the transition period a possibly inconsistent customer experience.
 
 Similar to application Scaling, if a Deployment is exposed publicly, the Service will load-balance the traffic only to available Pods during the update. An available Pod is an instance that is available to the users of the application.
 
@@ -1012,7 +987,7 @@ Rolling updates allow the following actions:
 * Continuous Integration and Continuous Delivery of applications with zero downtime
 
 
-### 7.3 - Update the version of the app
+### 3.7.3 - Update the version of the app
 
 To list your deployments use the get deployments command:
 ```
@@ -1135,7 +1110,7 @@ Since during a certain transition period both versions are active at the same ti
 Also, note that the two `v1` Pods were running on the same slave ('newyear-worker') while the two `v2` Pods are balanced across the two slaves.
 
 
-### 7.4 - Verify an update
+### 3.7.4 - Verify an update
 
 First, let’s check that the App is running. To find out the exposed IP and Port we can use describe service:
 ```
@@ -1192,7 +1167,7 @@ Pod Template:
 We run now the version 2 of the app!
 
 
-### 7.5 - Rollback an update
+### 3.7.5 - Rollback an update
 
 Let’s perform another update, and deploy image tagged as v10 :
 ```
@@ -1253,7 +1228,7 @@ tuto@laptop:~$ kubectl describe pods
 We see that the deployment is using a stable version of the `app` (v2). The Rollback was successful.
 
 
-## 8 - Conclusion
+## 3.8 - Conclusion
 
 At this step in the tutorial, you know how to deploy a stateless app on the cluster, and how to manage simple operations like a scaling in and out, or a version update.
 
