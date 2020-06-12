@@ -1,16 +1,18 @@
 # Part 3 - Deploy a simple app
 
-# BESOIN DE DECRIRE COMMENT FAIRE LE TUTO AVEC KIND:
-#  - comment lancer le cluster
-#  - où aller pour trouver le dashboard
-#  - comment lancer/arrêter le proxy
+# A FAIRE AVANT DE FIGER CE TUTO:
+> BESOIN DE DECRIRE COMMENT FAIRE LE TUTO AVEC KIND:
+> - comment lancer le cluster
+> - où aller pour trouver le dashboard
+> - comment lancer/arrêter le proxy
+>
+> BESOIN DE REVOIR TOUTES LES COMMANDES ET IMAGES:
+> - seul scénario = kind
+> - prompt = "tuto@laptop:~$"
+> - régénérer tous les résultats sur le terminal
 
-# BESOIN DE REVOIR TOUTES LES COMMANDES ET IMAGES:
-#  - hypothese 1: seul scénario = kind
-#  - hypothèse 2: prompt = "tuto@laptop:~$"
 
-
-## 1 - Kubernetes Deployments
+## 3.1 - Kubernetes Deployments
 
 Once you have a running Kubernetes cluster, you can deploy your containerized applications on top of it. To deploy your containerized application on top of the cluster, you create what is called a ***Kubernetes Deployment***. The Deployment materializes through a text file (a YAML file) which defines the *target state* of your application (which Docker container or which set of containers will compose your application, on how many nodes - in order to bring resilience - or other criterias your application should respect once it is actually deployed on the cluster).
 This text file instructs Kubernetes how to create and update instances of your application: actually,
@@ -24,7 +26,7 @@ Once the application instances are created, the Deployment Controller continuous
 
 In a pre-orchestration world, installation scripts would often be used to start applications, but they did not allow recovery from machine failure since there was little way to actually monitor the status of the application. By both creating your application instances and keeping them running across Nodes, Kubernetes Deployments provide a fundamentally different approach to application management.
 
-## 2 - Deploying your first app on Kubernetes
+## 3.2 - Deploying your first app on Kubernetes
 
 You can create and manage a Deployment by using the Kubernetes command line interface, `kubectl`. `kubectl` uses the Kubernetes API to interact with the cluster: its role is actually to translate commands which you enter (or more often YAML files containing your instructions) into API calls to the Kubernetes API server. It actually does *nothing*: it only passes your instructions to the Master via the API server, and translate the answers into a human readable format.
 ![alt txt](./images/tuto-3-kubectl-kubernetes-api.png "Kubectl accesses Kubernetes via the API server")
@@ -88,7 +90,7 @@ tuto@laptop:/projects/kind$ kubectl get pods
 *** insert the result here ***
 ```
 
-## 3 - Connecting to your app from within the cluster
+## 3.3 - Connecting to your app from within the cluster
 
 Pods that are running inside Kubernetes are running on a private, isolated network. By default they are visible from other pods and services within the same kubernetes cluster, but not outside that network. When we use `kubectl`, we're interacting through an API endpoint to communicate with our application.
 
@@ -128,9 +130,9 @@ hello-5bfc654f49-bvbw5
 In order for the new deployment to be accessible without using the Proxy, a 'Service' is required which will be explained in the next modules.
 
 
-## 4 - Explore your app
+## 3.4 - Explore your app
 
-### 4.1 - Kubernetes Pods
+### 3.4.1 - Kubernetes Pods
 
 When you created a *Deployment* in Section 2, Kubernetes created a Pod to host your application instance. A Pod is a Kubernetes abstraction that represents a group of one or more application containers, and some shared resources for those containers. Those resources include:
 * Shared storage, as Volumes
@@ -141,7 +143,7 @@ A Pod models an application-specific *logical host* and can contain different ap
 
 As explained in Part 1, Pods are the atomic unit on the Kubernetes platform.
 
-### 4.2 - Nodes
+### 3.4.2 - Nodes
 
 A Pod always runs on a Node. A Node is a worker machine in Kubernetes and may be either a virtual or a physical machine, depending on the cluster. Each Node is managed by the Master. A Node can have multiple pods, and the Kubernetes Master automatically handles scheduling the pods across the Nodes in the cluster. The Master's automatic scheduling takes into account the available resources on each Node.
 
@@ -154,9 +156,7 @@ Every Kubernetes Node runs at least:
 Containers should only be scheduled together in a single Pod if they are tightly coupled and need to share resources such as disk.
 
 
-
-4.3 - Check the application configuration
-=========================================
+### 3.4.3 - Check the application configuration
 
 We already have checked the pods with `kubectl`, so we know that a `kubernetes-bootcamp` pod runs on the `slave 2`. Now, let's view what containers are inside that Pod and what images are used to build those containers. To do so, we run the describe pods command:
 ```
@@ -217,10 +217,10 @@ Whaou... Plenty of information is available, as you can see: IP address, the por
 
 The output of the describe command is extensive and covers some concepts that we didn’t explain yet, but don’t worry, they will become familiar by the end of this bootcamp.
 
-> Note: the `describe` command can be used to get detailed information about most of the kubernetes primitives: node, pods, deployments. The describe output is designed to be human readable, not to be scripted against.
+> Note: the `describe` command can be used to get detailed information about most of the Kubernetes primitives: Node, Pods, Deployments. The described output is designed to be human readable, not to be scripted against.
 
 
-### 4.4 - Show the app in the terminal
+### 3.4.4 - Show the app in the terminal
 
 Recall that Pods are running in an isolated, private network - so we continue with the `kubectl proxy` command in a second terminal window (on port 8001).
 
@@ -389,7 +389,7 @@ The url structure is self explicit:
 In our case, we indicate 'pods' and which Pod (with its name) we want information on.
 
 
-### 4.5 - View the container logs
+### 3.4.5 - View the container logs
 
 Anything that the application would normally send to `STDOUT` becomes logs for the container within the Pod. We can retrieve these logs using the `kubectl logs` command:
 ```
@@ -405,7 +405,7 @@ tuto@laptop:~$ kubectl logs $POD_NAME
 We can see everything that the application sent to `stdout`, because we have not set a proper `syslog` in the app or in the container. Obviously, in a real environment, the logs would be sent towards a syslog agent, and Kubernetes would then manage the redirection of the logs to the log management system (outside Kubernetes).
 
 
-### 4.6 - Executing command inside the container
+### 3.4.6 - Executing command inside the container
 
 We can execute commands directly in the container once the Pod is up and running. For this, we use the `exec command` and use the name of the Pod as a parameter. Let’s list the environment variables:
 ```
@@ -470,10 +470,10 @@ exit
 tuto@laptop:~$
 ```
 
-## 5 - Expose Your App Publicly
+## 3.5 - Expose Your App Publicly
 
 
-### 5.1 - Overview of Kubernetes Services
+### 3.5.1 - Overview of Kubernetes Services
 
 Kubernetes Pods are mortal. Pods in fact have a lifecycle. When a worker node dies, the Pods running on the Node are also lost. A `ReplicaSet` might then dynamically drive the cluster back to desired state via creation of new Pods to keep your application running. As another example, consider an image-processing backend with 3 replicas. Those replicas are exchangeable; the front-end system should not care about backend replicas or even if a Pod is lost and recreated. That said, each Pod in a Kubernetes cluster has a unique IP address, even Pods on the same Node, so there needs to be a way of automatically reconciling changes among Pods so that your applications continue to function.
 
@@ -495,7 +495,7 @@ Exposes the Service using an arbitrary name (specified by `externalName` in the 
 Additionally, note that there are some use cases with `Services` that involve not defining selector in the spec. A `Service` created without selector will also not create the corresponding Endpoints object. This allows users to manually map a `Service` to specific `endpoints`. Another possibility why there may be no selector is you are strictly using type: `ExternalName`.
 
 
-### 5.2 - Services and Labels
+### 3.5.2 - Services and Labels
 
 
 ![alt txt](./images/tuto-3-expose-your-app-services-and-labels-1.png "Use a 'Service' to expose your app")
