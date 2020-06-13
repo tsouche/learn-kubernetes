@@ -15,23 +15,19 @@ This tutorial mixes elements from the official Kubernetes site 'get started' sec
 The tutorial will guide you step by step through:
 
 * **Part 1**: getting to know the basic concepts of Kubernetes
-* **Part 2**: creating and setting up a Kubernetes cluster running on 3 VMs
+* **Part 2**: setting up a Kubernetes cluster
 * **Part 3**: deploying a simple app on this cluster
 * **Part 4**: deploying a more complex (and stateful) app on the cluster
-* **Part 5**: deploying a Cassandra ring on top of Kubernetes
+* **Part 5**: deploying a stateful app on top of a Cassandra ring on top of Kubernetes
 * **Part 6**: conclusion
 
 This tutorial is structured in several documents + many other files:
-* `tutorial-1-concepts.txt` covers the parts 0 and 1 of the tutorial;
-* `tutorial-2-practise.txt` covers the parts 2 to 5 of the tutorial;
-* `tutorial-3-appendix.txt` gathers many useful details, mostly collected from the 'Concept' section of the official Kubernetes site;
+
 * various pictures whose name point back to the structure of this document, and which are usefull to understand better the Kubernetes concepts or to illustrate some results to be obtained during the execution of the tutorial;
-* a sub-directory `vm-images` contains several VirtualBox VM images used in the part 2 to build the Kubernetes cluster;
-* a sub-directory `yaml` contains various configuration files used in the Part 2 for setting up the kubernetes cluster
+* a sub-directory `deploy` contains various configuration files used in the Part 2 for setting up the kubernetes cluster
 * a sub-directory `app-hello` contains the components of a simple 'hello world' application used in Part 3;
 * a sub-directory `app-guestbook` contains the components of a stateful 'guestbook' application used in Part 4;
 * a sub-direcotry `app-cassandra` contains the components of a example of implementation of a cassandra ring ontop kubernetes, used in Part 5.
-
 
 Here are the identified pre-requisites to run this tutorial and actually learn something from this experience:
 
@@ -44,4 +40,3 @@ Also, you will find several resources by cloning the git repository:
 
 
 This is it. Nothing else is needed... except the desire to learn :-)
-
