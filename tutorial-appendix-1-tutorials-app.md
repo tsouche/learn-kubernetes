@@ -7,7 +7,7 @@ In Part 3 of the tutorial, we deploy a very simple app showing a 'Hello world' m
 
 We will show here how to build it, knowing that all necessary resources are the python script, the requirements and the `Dockerfile`: they all are in the `./app-hello` sub-directory. Let's build the app, and upload the container in DockerHub, so that we can use it later in the tutorial (for more details on the step-by-step process, you can refer to the docker tutorial).
 
-```
+```bash
 tuto@laptop:$~/learn-kubernetes$ cd app-hello
 
 tuto@laptop:$~/learn-kubernetes/app-hello$ ls
@@ -41,14 +41,14 @@ part3: digest: sha256:11a4499466b92f3907e369d07ba943b0a600e417f94cac0ff13ec07e82
 
 Here it is: the image is uploaded to DockerHub and we can now test it locally (i.e. not running on the Kubernetes cluster, but simply running on a local docker container):
 
-```
+```bash
 tuto@laptop:$~/learn-kubernetes/app-hello$ docker run -d -p 4000:80 tsouche/learn-kubernetes:part3
 6de75d8df9562f7870cda1bd691deb0d67d9b8c7763383c777c5bef235664ce2
 ```
 
 It is now running, and the web server is listening on the port 4000. Let's probe the URL using `curl`:
 
-```
+```bash
 tuto@laptop:$~/learn-kubernetes/app-hello$ curl http://localhost:4000
 <h3>Hello World!</h3><b>Hostname:</b> 6de75d8df956<br/>tuto@laptop:$~/learn-kubernetes/app-hello$
 ```
@@ -57,7 +57,7 @@ Here we are: the container is published on Docker Hub, and the application is ru
 
 We also do the same for the version 2 of the app, whose components are located in the 'v2' sub-directory:
 
-```
+```bash
 $ cd v2/
 $ docker build -t app-hello-v2 .
 $ docker tag app-hello-v2 tsouche/learn-kubernetes:part3v2

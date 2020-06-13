@@ -124,7 +124,7 @@ Thanks to this proxy, you can now access the dashboard service from the laptop:
 You will see a login screen: choose the 'Token' option and paste the token in the following field. Here you are!
 
 
-## 2.3 - Conclusion
+## 2.3 - Conclusion of the `kind` cluster deployment
 
 Thats's it: you have a cluster running, which you can access with `kubectl`. It simulates 3 nodes, and `kind` spoofs Kubernetes: the various containers behave as Nodes and Pods and interact via the API server, with `kubelet`. The fact that the topology is now 100% logical (topology between containers) and not physical (the containers do not run on different machines) is not visible from the various Kubernetes components. The containers respect the APIs.
 
@@ -142,7 +142,7 @@ This scenario comes from the constraints of a colleague who could not run the tu
 
 I did not want to bother with porting the whole thing onto Windows, and I am really not familiar with coding on windows: looking for a *simple* way to meet his need, I finally resolved into setting up a VM with all the prerequisites (Ubuntu desktop, docker, GO, Kind, Kubectl...).
 
-I initially went the Vagrant way: however, for some reason, I felt it difficult to work out with a desktop linux, while everything works fine with server versions). So I eventually decided to setup the VM with VirtualBox, export the OVA VM image and make it available to students so that they can run the tutorial *as if they were running Kind on Linux*.
+I initially went the Vagrant way: however, for some reason, I felt it difficult to work out with a desktop linux, while everything works fine with server versions). So I eventually decided to setup the VM with VirtualBox, export the OVA VM image and make it available to students so that they can run the tutorial *as if they were running `kind` on Linux*.
 
 The VM was set:
 * from a Ubuntu 20.04 LTS base OS
