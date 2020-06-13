@@ -552,4 +552,4 @@ No resources found in default namespace.
 
 ## 4.6 - Conclusion
 
-I am not completely satisfied with this example: obviously, it show how easy it is to handle an application on top of Kubernetes, but it does not drill into the challenges of implementing statefulness on Kubernetes. To be improved and continued...
+I am not completely satisfied with this example: obviously, it show how easy it is to handle an application on top of Kubernetes, but it does not drill into the challenges of implementing statefulness on Kubernetes. To be improved and continued... in Part 5 :-)
