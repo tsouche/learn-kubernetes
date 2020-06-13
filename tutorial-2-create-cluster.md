@@ -2,11 +2,11 @@
 
 Let's now refine a bit few concepts on the node, and get these concepts in action in setting up and deploying a cluster!
 
-The most interesting part of the tutorial is to manage applications on a  Kubernetes cluster, but it is actually very interesting also to take the time  to learn how to set a cluster up.
+The most interesting part of the tutorial is to manage applications on a  Kubernetes cluster, but it is actually also very interesting to take the time to learn how to set a cluster up. The methodology varies fast as the versions of `Kubernetes` keep evolving and there are now very automated ways to deploy a cluster on your local machine with minimalistic VMs (based on Container Linux). However, for the sake of simplicity and because I could not find the time to follow the pace with versions, and changes in the setup of a VM-based cluster, I am using here `KinD` (`Kubernetes in Docker`): it is ideal for simulating a cluster... and it is very easy.
 
-Several scenarios are possible, and we will drill into three options:
-* **deploying 3 virtual machines** on the laptop, and make one the Master of  the cluster, and the two other the Slaves : this is the preferred  scenario since the Kubernetes software running on the VMs cannot know that it is all running on the same physical machine, so it gives a very representative setup;
-* **deploying the cluster on docker containers**, using `Kubernetes-in-Docker` (also called `kind`) and *faking* a cluster: this is less representative *(although one may think that the future of Kubernetes is to be looked into native bare-metal deployment...)*, but it can run on a  much smaller footprint than the previous option (which require a laptop with enough CPU and memeory to accomodate for 3 VM or more);
+`Kind` actually *fakes* a cluster by running each node (kubelet, proxy, etc tec) into a Docker container: this is less representative *(although one may think that the future of Kubernetes is possibly a very minimalistic OS running containers, and it may look more and more like Kind...)*, but it can run on a  much smaller footprint than spawining multiple VMs (which require a laptop with enough CPU and memeory to accomodate for 3 VM or more).
+
+This may also be run in
 * and finally we need a **'combo scenario'** to be able run this tutorial on a *'normal office laptop'*, i.e. running on windows and with maximum 8GB memory. To do so, we will use a linux VM (running Ubuntu Deslktop) wihtin which we will deploy a `kind` cluster.
 
 The **appendix 0** contains the details for the three deployment scenarios. We will
