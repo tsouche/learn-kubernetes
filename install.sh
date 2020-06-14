@@ -20,6 +20,10 @@ echo "setxkbmap us" >> ~/.bashrc
 apt-get install -y git
 apt-get install -y curl
 
+# Install go version 1.14.2 or later
+
+apt-get install -y golang
+
 # Install docker
 
 apt-get update
@@ -43,8 +47,6 @@ chmod +x ./kind
 mv ./kind /usr/local/bin/kind
 
 # install `kubectl` v1.18.2
-curl -LO ./kubectl https://storage.googleapis.com/kubernetes-release/release/v1.18.2/bin/linux/amd64/kubectl
-chmod +x ./kubectl
+curl -Lo ./kubectl https://storage.googleapis.com/kubernetes-release/release/v1.18.2/bin/linux/amd64/kubectl
+
 mv ./kubectl /usr/local/bin/kubectl
-
-

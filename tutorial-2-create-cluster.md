@@ -5,10 +5,10 @@
 
 We will describe here the setting up of a Kubernetes cluster using `Kind`, i.e. simulating each Node with a Docker container, and faking teh behaviour of the Kubernetes cluster. `Kind` does it so well that the Pods have no clue that their containers are running directly on the host: they are actually being proxied by the *Containers-behaving-as-Nodes*: in this way, Kubelet sees the Master exactly the same way as if it were running on a *true* Node (i.e. a VM or on bare metal), and the API servers exposes exactly the same APIs as a genuie cluster (`Kind` is certified *K8s compliant* by the CNCF).
 
-We provide two scripts which automate the full procedure of:
+We provide two scripts which automate the full procedure:
 
-1. installing the libraries required for this tutorial (git, curl, docker, kind, kubectl) setting up the cluster
-2. deploying the cluster and the dashboard.
+1. to install the libraries required for this tutorial (git, curl, docker, kind, kubectl) setting up the cluster
+2. to deploy the cluster and the dashboard.
 
 These scripts are in the main directory: `install.sh` and `deploy.sh`. We will now describe the steps gathered in these two scripts, so that you can understand the procedure to setup a `Kind` cluster.
 
@@ -30,103 +30,131 @@ In order to make sure that all versions are compatible (it's moving fast) and we
 
 The corresponding binary files are available in the `deploy` directory.
 
-### 2.2.1 remove possible temporary files
+Alternatively, you can use the Virtual Machine image (which runs with VirtualBox) which I prepared for this tutorial: it is [here]().
 
-Previous deployments may have left temporary files, which may interfere with the proper rollout of the cluster. The first step is to remove all of them:
+### 2.2.1 Deploy the cluster
+
+Previous deployments may have left temporary files, which may interfere with the proper rollout of the cluster. The `deploy.sh` script will first tidy the place and hten deploy the Kubernetes cluster:
 
 ```bash
 tuto@laptop:~$ cd learn-kubernetes/
-tuto@laptop:~/learn-kubernetes$ rm -rf .kube
-tuto@laptop:~/learn-kubernetes$ mkdir ~/.kube
-tuto@laptop:~/learn-kubernetes$ rm -rf sandbox
-tuto@laptop:~/learn-kubernetes$ mkdir sandbox
+tuto@laptop:~/learn-kubernetes$ ./deloy.sh
+=======================================================================
+ Create/populate the sandbox
+=======================================================================
+...
+done
+...
+
+========================================================================
+Installing a 5-nodes Kubernetes cluster (K8s-in-Docker)
+========================================================================
+...
+Creating cluster "k8s-tuto" ...
+ ✓ Ensuring node image (kindest/node:v1.18.2) 🖼
+ ✓ Preparing nodes 📦 📦 📦 📦 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+ ✓ Joining worker nodes 🚜
+Set kubectl context to "kind-k8s-tuto"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-k8s-tuto
+
+Thanks for using kind! 😊
+..... wait 5 seconds .....
+done
+...
+
+========================================================================
+Installing Kubernetes Dashboard
+========================================================================
+...
+namespace/kubernetes-dashboard created
+serviceaccount/kubernetes-dashboard created
+service/kubernetes-dashboard created
+secret/kubernetes-dashboard-certs created
+secret/kubernetes-dashboard-csrf created
+secret/kubernetes-dashboard-key-holder created
+configmap/kubernetes-dashboard-settings created
+role.rbac.authorization.k8s.io/kubernetes-dashboard created
+clusterrole.rbac.authorization.k8s.io/kubernetes-dashboard created
+rolebinding.rbac.authorization.k8s.io/kubernetes-dashboard created
+clusterrolebinding.rbac.authorization.k8s.io/kubernetes-dashboard created
+deployment.apps/kubernetes-dashboard created
+service/dashboard-metrics-scraper created
+deployment.apps/dashboard-metrics-scraper created
+done
+...
+
+========================================================================
+Create sample user with the right to access the dashboard
+========================================================================
+...
+serviceaccount/admin-user created
+clusterrolebinding.rbac.authorization.k8s.io/admin-user created
+..... wait 5 seconds .....
+done
+...
+
+========================================================================
+Get Token
+========================================================================
+...
+done
+...
+
+========================================================================
+Start kube proxy in another tab of the existing terminal
+========================================================================
+...
+# _g_io_module_get_default: Found default implementation gvfs (GDaemonVfs) for ‘gio-vfs’
+# _g_io_module_get_default: Found default implementation dconf (DConfSettingsBackend) for ‘gsettings-backend’
+# watch_fast: "/org/gnome/terminal/legacy/" (establishing: 0, active: 0)
+# unwatch_fast: "/org/gnome/terminal/legacy/" (active: 0, establishing: 1)
+# watch_established: "/org/gnome/terminal/legacy/" (establishing: 0)
+done
+...
+
+========================================================================
+Launch dashboard in a web browser
+========================================================================
+...
+Here is the token needed to log into the dashboard:
+eyJhbGciOiJSUzI1NiIsImtpZCI6IjBuTXF1dDRvUGFFUVJ4RVBUN0lOVXlQak1xNl8xQ0kzME1IRzJRdFA5U00ifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLW1mcHdwIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI3OTMyOTZmNy1jOTliLTQ1YjItYTIwNS04NGZmOGIzMzhlZWQiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.yiPhIVovxoAS7hf8rPMpExw3ODs7Cp6L2nQHZRKbwjKLhPcckAOXXfKUoRNFzFgy0x7FX2r-K-BGlIaAMhPbaW9RoI_cqXKWQoKTfuGQMSSwr5wVx4keE8elrznL1g7kfA5YrXjDPdjGptf06jfUFeXB-f6ohTLmhVxk0PLUeCA7GA_Y2BzkqUp0cGLX79zuHkBcGinBeN66G7frGlJQoCROT7JT7F0EVZ-YxiSBbX7prnfUY8d1d7KHFAgEWCzlZvXE7p2z43fxU0NfaI0cb6Ppy5n2b8BJQ0mMURL0reRlk_wTBmqnSTuDIIO5W6-6xayj4DLJ1eoyL33wijehpQ
+done
+...
+
+========================================================================
+The END
+========================================================================
 ```
 
+Look at the bottom of the `deploy.sh` script output: a *token* is displayed (the very very long sequence of characters, starting here with `eyJhbGciOiJS...` and finishing with `...33wijehpQ`): this token is *unique* (i.e. it will change everytime you will start up a new cluster) so you need to **copy** the one which will be displayed when you run the `deploy.sh` script on your machine.
 
-### 2.2.2 - deploy the cluster
-
-Kind automates the deployment of the cluster: we need to pass only two arguments to kind:
-
-* the configuration of the cluster: the API's version and the number of nodes. The configuration file called `kind-cluster.yaml` is located in the `./deploy` directory.
-* the name of the cluster: Kind can manage multiple clusters simultaneously and it can distinguish them only by their name.
-
-We copy and rename the required original files from `./deploy` to `./sandbox` (so that we can run several times a given step of the tutorial, with always the ability to reset the cluster and start from a fresh state), and then we go in the `sandbox` directory for the following steps:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ cp ./deploy/kind-cluster-v0.2.yaml ./sandbox/kind-cluster.yaml
-tuto@laptop:~/learn-kubernetes$ cp ./deploy/dashboard-v200-recommended.yaml ./sandbox/recommended.yaml
-tuto@laptop:~/learn-kubernetes$ cp ./deploy/dashboard-adminuser.yaml ./sandbox/dashboard-adminuser.yaml
-tuto@laptop:~$ cd sandbox/
-tuto@laptop:~/learn-kubernetes/sandbox$
+The `deploy.sh` script launched automaticaly:
+1. another tab in the terminal, which runs the kubectl proxy: this proxy exposes the Kubernetes cluster towards the local machine. This means that, thanks to this proxy, you will be able to acces the API server and query requests to the Kubernetes APIs (via a browser or via `kubectl`).
 ```
-
-From there, we have in the `./sandbox` directory all the files required to deploy the cluster:
-
-```bash
-tuto@laptop:~$ kind create cluster --config ./kind-cluster.yaml --name k8s-tuto
-```
-
-### 2.2.3 - deploy the dashboard (web GUI)
-
-The next step is to deploy the dashboard on top of the Kubernetes clsuter: the dashboard actually runs on the cluster exactly the same way as any other application. You need to use `kubectl` and inject a YAML file in the cluster.
-
-The YAML file is the one corresponding to the version 2.0.0, available in the `./deploy` directory, and the command is:
-
-```bash
-tuto@laptop:~/learn-kubernetes/sandbox$ kubectl apply -f recommended.yaml
-```
-
-We then create a *sample user*, i.e. a user with the correct profile and rights to access the dashboard application:
-
-```bash
-tuto@laptop:~/learn-kubernetes/sandbox$ kubectl apply -f dashboard-adminuser.yaml
-```
-
-Finally, we need to collect the secret token (which is needed to log on the dashboard from within a browser): we use the `kubectl get secret` command to identify the user, and then the `kubectl describe secret` command to extract the token:
-
-```bash
-tuto@laptop:~/learn-kubernetes/sandbox$ admin_profile=$(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
-tuto@laptop:~/learn-kubernetes/sandbox$ dashboard_token_full=$(kubectl -n kubernetes-dashboard describe secret $admin_profile | grep "token: ")
-```
-We remove various other element in the string, in order to keep the token only:
-
-```bash
-tuto@laptop:~/learn-kubernetes/sandbox$ dashboard_token=${dashboard_token_full#"token: "}
-```
-
-We save the token in a file called `data_dashboard_token`:
-
-```bash
-tuto@laptop:~/learn-kubernetes/sandbox$ echo $dashboard_token > data_dashboard_token
-```
-
-### 2.2.4 - access the dashboard from a browser
-
-To access the dashboard from a browser, you will need to make the dashbaord service accessible from outside the cluster, with a proxy. This proxy will be established by `Kubectl`: open a second terminal window, and run the following command from this new terminal:
-
-```bash
-tuto@laptop:~/learn-kubernetes/sandbox$ kubectl proxy -p 8001
 Starting to serve on 127.0.0.1:8001
 ```
+1. a browser window pointing the dashboard URL: it may not look ok at the beginning since the cluster may take few more seconds to get everything up and running, but very soon the API server will be able to answer the browser request, and you will see this.
+  ![alt txt](./images/tuto-2-dashboard-login-page.png "Here is the Dashboard login page")
 
-Thanks to this proxy, you can now access the dashboard service from the laptop:
-* come back to the previous terminal window, in order to be able to continue running commands towards the cluster (via `kubectl`) for the rest of the tutorial,
-* and copy the following URL in a browser to access the dashboard:
-  [http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/](http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/)
+  You now need to paste the *token* which you copied from the script output:
+  ![alt txt](./images/tuto-2-dashboard-login-enter-token.png "Paste the token")
 
-* the browser (possibly you may need to refresh it after few seconds to give time to the cluster to start all services) will show a login page with two option: select the 'Token' box;
-![alt txt](./images/tuto-2-dashboard-login-1.png "Dashboard login page")
-* paste into the field the token (yeah, its a very long line);
-![alt txt](./images/tuto-2-dashboard-login-2.png "Dashboard login page - fill the token")
-* and you are logged into the dashboard, which is a web GUI to help you see what is happening in the cluster, and even to operate the cluster from there:
-![alt txt](./images/tuto-2-dashboard-overview-1.png "Dashboard - overview of the cluster)")
+  And ***here you are*** : you are logged into the Dashboard!!!
+  ![alt txt](./images/tuto-2-dashboard-logged-in.png "You are logged in!")
 
-You will see a login screen: choose the 'Token' option and paste the token in the following field. Here you are!
+You can now control that the cluster is accessible from `kubectl` and that the Nodes have been deployed (in a `kind` way):
+
 
 
 ## 2.3 - Conclusion of the `kind` cluster deployment
 
-Thats's it: you have a cluster running, which you can access with `kubectl`. It simulates 3 nodes, and `kind` spoofs Kubernetes: the various containers behave as Nodes and Pods and interact via the API server, with `kubelet`. The fact that the topology is now 100% logical (topology between containers) and not physical (the containers do not run on different machines) is not visible from the various Kubernetes components. The containers respect the APIs.
+Thats's it: you have a cluster running, which you can access with `kubectl`. It simulates 5 nodes, and `kind` spoofs Kubernetes: the various containers behave as Nodes and Pods and interact via the API server, with `kubelet`. The fact that the topology is now 100% logical (topology between containers) and not physical (the containers do not run on different machines) is not visible from the various Kubernetes components. The containers respect the APIs.
 
 The interest here is both simplicity and footprint:
 * simplicity snice it takes very few steps to get a full cluster up and running, without having to bother about the network and other miscellaneous details...
@@ -134,7 +162,18 @@ The interest here is both simplicity and footprint:
 
 To me, this is more than just a spoof: `Kind` could bring the steps towards a '100% containers' Kubernetes, where the whole infrastructure would ONLY manage containers, and not anymore rotate around servers or VMs. To be continued...
 
+```bash
+tuto@laptop:~/projects/learn-kubernetes$ kind get clusters
+k8s-tuto
 
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get nodes
+NAME                     STATUS   ROLES    AGE   VERSION
+k8s-tuto-control-plane   Ready    master   24m   v1.18.2
+k8s-tuto-worker          Ready    <none>   24m   v1.18.2
+k8s-tuto-worker2         Ready    <none>   24m   v1.18.2
+k8s-tuto-worker3         Ready    <none>   24m   v1.18.2
+k8s-tuto-worker4         Ready    <none>   24m   v1.18.2
+```
 
 ## 2.4 - Running the Kind cluster on a VM
 
@@ -146,13 +185,11 @@ I initially went the Vagrant way: however, for some reason, I felt it difficult 
 
 The VM was set:
 * from a Ubuntu 20.04 LTS base OS
+* with docker 19.03
 * with `GO` version 1.14.2 or later
 * with `kind` version 0.8.1
 * with `kubectl` version 1.18.2
 
 and I cloned the 'learn-kubernetes' tutorial into the `~/learn-kubernetes` directory.
 
-As of this step, it is then very similar with the Part 2:
-* deploy a cluster with `kind` (config file and name)
-* deploy the `dashboard` and the sample user
-* copy the token and log into the dashboard from a browser
+As of this step, it is then very similar with the Part 2: you only have to deploy a cluster with `kind` (with the `deploy.sh` script).

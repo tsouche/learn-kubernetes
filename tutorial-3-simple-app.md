@@ -1,7 +1,6 @@
 # Part 3 - Deploy a simple app
 
 > BESOIN DE REVOIR TOUTES LES COMMANDES ET IMAGES:
-> - seul scénario = kind
 > - prompt = "tuto@laptop:~$"
 > - régénérer tous les résultats sur le terminal
 
@@ -9,10 +8,12 @@
 ## 3.1 - Kubernetes Deployments
 
 Once you have a running Kubernetes cluster, you can deploy your containerized applications on top of it. To deploy your containerized application on top of the cluster, you create what is called a ***Kubernetes Deployment***. The Deployment materializes through a text file (a YAML file) which defines the *target state* of your application (which Docker container or which set of containers will compose your application, on how many nodes - in order to bring resilience - or other criterias your application should respect once it is actually deployed on the cluster).
-This text file instructs Kubernetes how to create and update instances of your application: actually,
+This text file instructs Kubernetes how to create and update instances[^7cf12f60] of your application: actually,
 * it tells the **Controller Manager** to spawn a **Deployment Controller**
 * this newly created Deployment Controller will have as first task to read this text file and tell the **Scheduler** the technical rules which should be respected when 'scheduling' the pods onto individual Nodes in the cluster,
 * and the Scheduler will actually find the appropriate Nodes and assign the pods (which carry the containers composing your application).
+
+[^7cf12f60]: test the footnote
 
 ![alt txt](./images/tuto-3-app-deployment.png "Kubernetes Master schedules Pods on Nodes")
 
@@ -25,55 +26,57 @@ In a pre-orchestration world, installation scripts would often be used to start 
 
 In this module, you'll learn the most common `kubectl` commands needed to create *Deployments* that run your applications on a Kubernetes cluster.
 
-When you create a *Deployment*, you'll need to specify the container image for your application and the number of replicas that you want to run. You can change that information later by updating your Deployment (i.e. updating the YAML file and passing it yo `kubectl`); sections 3.5 and 3.6 of this tutorial discuss how you can scale and update your *Deployments*.
+When you create a *Deployment*, you'll need to specify the container image for your application and the number of replicas that you want to run. You can change that information later by updating your *Deployment* (i.e. updating the YAML file and apply it to the Master using `kubectl`). Once the application is deployed, sections 3.5 and 3.6 of this tutorial discuss how you can scale and update your *Deployments*.
 
-Applications need to be packaged into one of the supported container formats in order to be deployed on Kubernetes: here we will use **Docker**. For your first Deployment, you'll use a simple Python application (derived from the one used in the *docker-get-started* tutorial). The docker image is available from DockerHub under my public repository, with the name 'learn-kubernetes' and the tag 'part3': the appendix 1 shows how we build this docker image from the following 3 files:
+Applications need to be packaged into one of the supported container formats in order to be deployed on Kubernetes: here we will use **Docker**. For your first Deployment, you'll use a simple Python *"hello worl"* application. The docker image is available from DockerHub under my public repository, with the name `learn-kubernetes` and the tag `part3`: the **Appendix 1** explains how this image is built. The source files are in the `./app-hello` directory:
 
 File 1: `./app-helo/app.py`
+
 ```python
-    from flask import Flask
-    import os
-    import socket
+from flask import Flask
+import os
+import socket
 
+app = Flask(__name__)
 
-    app = Flask(__name__)
+@app.route("/")
+def hello():
+    html = "<h3>Hello {name}!</h3>" \
+           "<b>Hostname:</b> {hostname}<br/>"
+    return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
 
-    @app.route("/")
-    def hello():
-        html = "<h3>Hello {name}!</h3>" \
-               "<b>Hostname:</b> {hostname}<br/>"
-        return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
-
-    if __name__ == "__main__":
-        app.run(host='0.0.0.0', port=80)
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=80)
 ```
 
 File 2: `./app-helo/requirements.txt`
-```python
-    Flask
+```javascript
+Flask
 ```
 
 File 3: `./app-helo/Dockerfile`
 ```bash
-    # Use an official Python runtime as a parent image
-    FROM python:3.6
-    # Set the working directory to /app
-    WORKDIR /app
-    # Copy the current directory contents into the container at /app
-    ADD . /app
-    # Install any needed packages specified in requirements.txt
-    RUN pip install --trusted-host pypi.python.org -r requirements.txt
-    # Make port 80 available to the world outside this container
-    EXPOSE 80
-    # Define environment variable
-    ENV NAME World
-    # Run app.py when the container launches
-    CMD ["python", "app.py"]
+# Use an official Python runtime as a parent image
+FROM python:3.6
+# Set the working directory to /app
+WORKDIR /app
+# Copy the current directory contents into the container at /app
+ADD . /app
+# Install any needed packages specified in requirements.txt
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+# Make port 80 available to the world outside this container
+EXPOSE 80
+# Define environment variable
+ENV NAME World
+# Run app.py when the container launches
+CMD ["python", "app.py"]
 ```
 
 You can create and manage a Deployment by using the Kubernetes command line interface, `kubectl`. `kubectl` uses the Kubernetes API to interact with the cluster: its role is actually to translate commands which you enter (or more often YAML files containing your instructions) into API calls to the Kubernetes API server. It actually does *nothing*: it only passes your instructions to the Master via the API server, the Master does the job, and then `kubectl` translates back the Master's answers into a human readable format.
 
-![alt txt](./images/tuto-3-kubectl-kubernetes-api.png "Kubectl accesses Kubernetes via the API server")
+At this moment in time, there is no application running on the Kubernetes cluster: this is visibile on the *Dashboard*, for instance if we ool at the *Deployments*.
+
+![alt txt](./images/tuto-3-dashboard-deployment-before.png "There is no deployment yet")
 
 Let’s deploy this first app on Kubernetes with the `kubectl create deployment` command. We need to provide the deployment name and app image location (include the full repository url if the container images are hosted outside Docker hub):
 
@@ -81,29 +84,27 @@ Let’s deploy this first app on Kubernetes with the `kubectl create deployment`
 tuto@laptop:~$ kubectl create deployment hello --image=tsouche/learn-kubernetes:part3
 deployment.apps/hello created
 ```
+It takes few seconds for the applciation to be deployed: the dashboad will first show an intermediate stae :
 
-***Great!***  You just deployed your first application by creating a deployment (which you can also see in the dashboard:
+![alt txt](./images/tuto-3-dashboard-deployment-during.png "Work in progress...")
 
-***image to be replaced !!!***
-![alt txt](./images/tuto-3-dashboard-deployment-first.png "your first deployment on Kubernetes!!!")
+And then you can see the Deployment live:
 
-You can also see that it created a Pod called `hello-7747bc55f-p486h` as it is visible on the dashboard:
+![alt txt](./images/tuto-3-dashboard-deployment-after.png "The application is live!!!")
 
-***image to be replaced !!!***
-![alt txt](./images/tuto-3-dashboard-pod-bootcamp.png "your first deployment on Kubernetes!!!")
+![alt txt](./images/tuto-3-dashboard-deployment-pods.png "The application is live!!!")
 
-
-You can see the same information in the terminal:
+***Great!*** :smile: You just deployed your first application by creating a deployment! You can also see that it created a Pod called `hello-549897755f-gw997` as it is visible on the *Dashboard*. Now it hte time to get the same information in the terminal, using `kubectl` instead of the *Dashboard*: we will ask `kubectl` to look for all the Pods on the cluster:
 
 ```bash
 tuto@laptop:/projects/kind$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE             NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running   0          28s   10.244.1.2   newyear-worker   <none>           <none>
+NAME                     READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+hello-549897755f-gw997   1/1     Running   0          4m50s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
 ```
 
-In few seconds, the application is deployed.
+In few seconds, the application is deployed. :smile:
 
-> Note: from now on, we assume that you will go frequently on the dashboard to check the changes happening on the cluster, and we will focus the tutorial on the CLI commands and results as they appear in the terminal. Again, the purpose of this tutorial is solely to get you aquainted with the Kubernetes concepts and to manipulate the cluster, while you may get far more efficient at manipulating directly the REST APIs or managing some actions via the dashboard itself.
+> Note: from now on, we assume that you will go frequently on the *Dashboard* to check the changes happening on the cluster, and we will focus the tutorial on the CLI commands and results as they appear in the terminal. Again, the purpose of this tutorial is solely to get you aquainted with the Kubernetes concepts and to manipulate the cluster, while you may get far more efficient at manipulating directly the REST APIs or managing some actions via the *Dashboard* itself.
 > So, as of now, we will not mention directly screenshots related to the progress on the tutorial, but you may see more screenshots in the `./images` directory.
 
 This `kubectl create deployment` command performed a few things for you:
@@ -174,6 +175,7 @@ tuto@laptop:~$ export POD_NAME=$(kubectl get pods -o go-template --template '{{r
 tuto@laptop:~$ echo $POD_NAME
 hello-5bfc654f49-bvbw5
 ```
+
 In order for the new deployment to be accessible without using the Proxy, a 'Service' is required which will be explained in the next modules.
 
 
@@ -275,7 +277,8 @@ Recall that Pods are running in an isolated, private network - so we continue wi
 You have store the Pod name in the `POD_NAME` environment variable.
 
 To see the output of our application, run a `curl` request.
-```
+
+```bash
 tuto@laptop:~$ kubectl get namespace
 NAME                   STATUS   AGE
 default                Active   10m
@@ -426,8 +429,10 @@ tuto@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NA
   }
 }
 ```
+
 Pretty verbose, huh...
-At least, it enables to demonstrate that we can access the cluster from the host machine, and poll directly the REST APIs to retrieve information about the currently deployed applications. Interestingly, doing so manually, we operate exactly the same way `kubectl` or the dashboard do: they poll the REST APIs exposed by the cluster.
+
+At least, it enables to demonstrate that we can access the cluster from the host machine, and poll directly the REST APIs to retrieve information about the currently deployed applications. Interestingly, doing so manually, we operate exactly the same way `kubectl` or the *Dashboard* do: they poll the REST APIs exposed by the cluster.
 
 The url structure is self explicit:
 * it specifies the API version (v1 since versions 1.15 at least)
@@ -440,7 +445,8 @@ In our case, we indicate 'pods' and which Pod (with its name) we want informatio
 ### 3.4.5 - View the container logs
 
 Anything that the application would normally send to `STDOUT` becomes logs for the container within the Pod. We can retrieve these logs using the `kubectl logs` command:
-```
+
+```bash
 tuto@laptop:~$ kubectl logs $POD_NAME
  * Serving Flask app "app" (lazy loading)
  * Environment: production
@@ -481,38 +487,44 @@ HOME=/root
 Again, worth mentioning that the name of the container itself can be omitted since we only have a single container in the Pod.
 
 Next let’s start a bash session in the Pod’s container:
-```
+
+```bash
 tuto@laptop:~$ kubectl exec -ti $POD_NAME bash
 root@hello-5bfc654f49-bvbw5:/app#
 ```
+
 We have now an open console on the container where we run our Python application, and we are logged as root. The source code of the app is in the `app.py` file:
-```
-  root@hello-5bfc654f49-bvbw5:/app# cat app.py
-  from flask import Flask
-  import os
-  import socket
 
-  app = Flask(__name__)
+```bash
+root@hello-5bfc654f49-bvbw5:/app# cat app.py
+from flask import Flask
+import os
+import socket
 
-  @app.route("/")
-  def hello():
-      html = "<h3>Hello {name}!</h3>" \
-             "<b>Hostname:</b> {hostname}<br/>"
-      return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
+app = Flask(__name__)
 
-  if __name__ == "__main__":
-      app.run(host='0.0.0.0', port=80)
+@app.route("/")
+def hello():
+    html = "<h3>Hello {name}!</h3>" \
+           "<b>Hostname:</b> {hostname}<br/>"
+    return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=80)
 ```
 
 You can check that the application is up by running a `curl` command:
-```
+
+```bash
 root@hello-5bfc654f49-bvbw5:/app# curl localhost:80
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
 ```
+
 > Note: here we used `localhost:80` because we executed the command inside the container inside the Pod. Outside the container, the port 8001 is exposed. If you cannot connect to localhost:80, check to make sure you have run the `kubectl exec command` and are launching the command from within the Pod
 
 To close your container connection type "exit".
-```
+
+```bash
 root@hello-5bfc654f49-bvbw5:/app# exit
 exit
 tuto@laptop:~$
@@ -564,27 +576,31 @@ Labels can be attached to objects at creation time or later on. They can be modi
 
 
 Let’s verify that our application is running. We’ll use the `kubectl get` command and look for existing Pods:
-```
+
+```bash
 tuto@laptop:~$ kubectl get pods
 NAME                     READY   STATUS    RESTARTS   AGE
 hello-5bfc654f49-bvbw5   1/1     Running   0          8m
 ```
 
 Next, let’s list the current Services from our cluster:
-```
+
+```bash
 tuto@laptop:~$ kubectl get services
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   12m
 ```
 
 We have a `Service` called `kubernetes` that is created by default when the cluster starts. To create a new service and expose it to external traffic we’ll use the `kubectl expose` command with `NodePort` as parameter.
-```
+
+```bash
 tuto@laptop:~$ kubectl expose deployment/hello --type="NodePort" --port 80
 service/hello exposed
 ```
 
 Let’s run again the `get services` command:
-```
+
+```bash
 tuto@laptop:~$ kubectl get services
 NAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
 hello        NodePort    10.96.206.27   <none>        80:31100/TCP   5s
@@ -595,7 +611,8 @@ kubernetes   ClusterIP   10.96.0.1      <none>        443/TCP        12m
 
 To find out what port was opened externally (by the `NodePort` option) we’ll run
 the `kubectl describe service` command:
-```
+
+```bash
 tuto@laptop:~$ kubectl describe services/hello
 Name:                     hello
 Namespace:                default
@@ -615,12 +632,14 @@ Events:                   <none>
 
 We ceate an environment variable called `NODE_PORT` that has the value of the
 Node port assigned:
-`
-tuto@laptop:~$ export NODE_PORT=31100
-`
 
-Then we need to identify the external IP which is exposed for the whole cluster: this ip is used as the `endpoint` for the default `kubernetes` service:
+```bash
+tuto@laptop:~$ export NODE_PORT=31100
 ```
+
+Then we need to identify the external IP which is exposed for the whole cluster: this IP is used as the `endpoint` for the default `kubernetes` service:
+
+```bash
 tuto@laptop:~$ kubectl describe services/kubernetes
 Name:              kubernetes
 Namespace:         default
@@ -638,23 +657,27 @@ Events:            <none>
 ```
 
 Here we can see the cluster's shared `Endpoint`: `172.17.0.3`.
-```
+
+```bash
 tuto@laptop:~$ export ENDPOINT=172.17.0.3
 ```
 
 Now that we have both the ip@ (`172.17.0.3`) and the port (`31100`), we can test
 that the app is exposed outside of the cluster using `curl`:
-```
+
+```bash
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 <h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
 ```
+
 And we get a response from the server. The Service is exposed.
 
 
 ### 3.5.4 - Using labels
 
 The `Deployment` created automatically a `label` for our Pod. With `describe deployment` command, you can see the name of the `label`:
-```
+
+```bash
 tuto@laptop:~$ kubectl describe deployment
 Name:                   hello
 Namespace:              default
@@ -690,21 +713,24 @@ Events:
 ```
 
 As you can see, the label is '`app`' and its value is '`hello`', so it appears as '`app=hello`'. Let’s use this label to query our list of Pods. We’ll use the `kubectl get pods` command with `-l` as a parameter, followed by the label values:
-```
+
+```bash
 tuto@laptop:~$ kubectl get pods -l app=hello
 NAME                     READY   STATUS    RESTARTS   AGE
 hello-5bfc654f49-bvbw5   1/1     Running   0          11m
 ```
 
 You can do the same to list the existing services:
-```
+
+```bash
 tuto@laptop:~$ kubectl get services -l app=hello
 NAME    TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
 hello   NodePort   10.96.206.27   <none>        80:31100/TCP   2m59s
 ```
 
 Get the name of the Pod and store it in the `POD_NAME` environment variable:
-```
+
+```bash
 tuto@laptop:~$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
 tuto@laptop:~$ echo $POD_NAME
 hello-5bfc654f49-bvbw5
@@ -713,13 +739,15 @@ hello-5bfc654f49-bvbw5
 To apply a new label, we use the `kubectl label` command followed by the object type,
 object name and the new label: we create the label '`version`' and we assign it
 a value of '`v1`'.
-```
+
+```bash
 tuto@laptop:~$ kubectl label pod $POD_NAME version=v1
 pod/hello-5bfc654f49-bvbw5 labeled
 ```
 
 This will apply a new label to our Pod (we pinned the application version to the Pod), and we can check it with the `kubectl describe pod` command:
-```
+
+```bash
 tuto@laptop:~$ kubectl describe pods $POD_NAME
 Name:         hello-5bfc654f49-bvbw5
 Namespace:    default
@@ -736,7 +764,8 @@ IP:           10.244.1.2
 ```
 
 We see here that both '`app`' and '`version`' labels are attached now to our Pod (as well as another label generated by Kubernetes for its own usage). And we can query now the list of pods using the new label:
-```
+
+```bash
 tuto@laptop:~$ kubectl get pods -l version=v1
 NAME                     READY   STATUS    RESTARTS   AGE
 hello-5bfc654f49-bvbw5   1/1     Running   0          13m
@@ -748,13 +777,15 @@ And we see the Pod.
 ### 3.5.5 - Deleting a service
 
 To delete Services you can use the `delete service` command. `Labels` can be used also here:
-```
+
+```bash
 tuto@laptop:~$ kubectl delete service -l app=hello
 service "hello" deleted
 ```
 
 Confirm that the service is gone:
-```
+
+```bash
 tuto@laptop:~$ kubectl get services
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   18m
@@ -762,7 +793,8 @@ kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   18m
 
 This confirms that our Service was removed. To confirm that route is not
 exposed anymore you can `curl` the previously exposed IP and port:
-```
+
+```bash
 tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
 curl: (7) Failed to connect to 172.17.0.3 port 31100: Connection refused
 ```
@@ -1328,7 +1360,7 @@ We see that the deployment is using a stable version of the `app` (v2). The Roll
 
 At this step in the tutorial, you know how to deploy a stateless app on the cluster, and how to manage simple operations like a scaling in and out, or a version update.
 
-Let's make it clear however that this is greatly simplified by the high level of automation made possible through Kubernetes: you actually only managed 'labels', and every command we did though `kubectl` could have been done by managing YAML files (i.e. by updating YAML files and feeding these files to the Master) or by directly accessing the REST APIs like the dashboard does.
+Let's make it clear however that this is greatly simplified by the high level of automation made possible through Kubernetes: you actually only managed 'labels', and every command we did though `kubectl` could have been done by managing YAML files (i.e. by updating YAML files and feeding these files to the Master) or by directly accessing the REST APIs like the *Dashboard* does.
 
 It is time now to get into slightly more complex things like a...
 ... stateful app: let's get to Part 4 of the tutorial.
