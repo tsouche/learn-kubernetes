@@ -1,32 +1,46 @@
 # Part 3 - Deploy a simple app
 
 > BESOIN DE REVOIR TOUTES LES COMMANDES ET IMAGES:
-> - prompt = "tuto@laptop:~$"
+> - prompt = "tuto@laptop:~/projects/learn-kubernetes$"
 > - régénérer tous les résultats sur le terminal
+
+<!-- TOC -->
+
+- [Part 3 - Deploy a simple app](#part-3---deploy-a-simple-app)
+  - [3.1 - Kubernetes Deployments](#31---kubernetes-deployments)
+  - [3.2 - Deploying your first app on Kubernetes](#32---deploying-your-first-app-on-kubernetes)
+  - [3.3 - Connecting to your app from within the cluster](#33---connecting-to-your-app-from-within-the-cluster)
+  - [3.4 - Explore your app](#34---explore-your-app)
+    - [3.4.1 - Kubernetes _Pods_](#341---kubernetes-pods)
+    - [3.4.2 - _Nodes_](#342---nodes)
+    - [3.4.3 - Check the application configuration](#343---check-the-application-configuration)
+    - [3.4.4 - Show the app in the terminal](#344---show-the-app-in-the-terminal)
+    - [3.4.5 - View the container logs](#345---view-the-container-logs)
+    - [3.4.6 - Executing command inside the container](#346---executing-command-inside-the-container)
+
+<!-- /TOC -->
 
 
 ## 3.1 - Kubernetes Deployments
 
-Once you have a running Kubernetes cluster, you can deploy your containerized applications on top of it. To deploy your containerized application on top of the cluster, you create what is called a ***Kubernetes Deployment***. The Deployment materializes through a text file (a YAML file) which defines the *target state* of your application (which Docker container or which set of containers will compose your application, on how many nodes - in order to bring resilience - or other criterias your application should respect once it is actually deployed on the cluster).
-This text file instructs Kubernetes how to create and update instances[^7cf12f60] of your application: actually,
+Once you have a running Kubernetes cluster, you can deploy your containerized applications on top of it. To deploy your containerized application on top of the cluster, you create what is called a ***Kubernetes Deployment***. The Deployment materializes through a text file (a YAML file) which defines the *target state* of your application (which Docker container or which set of containers will compose your application, on how many _Nodes_ - in order to bring resilience - or other criterias your application should respect once it is actually deployed on the cluster).
+This text file instructs Kubernetes how to create and update instances of your application: actually,
 * it tells the **Controller Manager** to spawn a **Deployment Controller**
-* this newly created Deployment Controller will have as first task to read this text file and tell the **Scheduler** the technical rules which should be respected when 'scheduling' the pods onto individual Nodes in the cluster,
-* and the Scheduler will actually find the appropriate Nodes and assign the pods (which carry the containers composing your application).
+* this newly created Deployment Controller will have as first task to read this text file and tell the **Scheduler** the technical rules which should be respected when 'scheduling' the _Pods_ onto individual _Nodes_ in the cluster,
+* and the Scheduler will actually find the appropriate _Nodes_ and assign the _Pods_ (which carry the containers composing your application).
 
-[^7cf12f60]: test the footnote
+![alt txt](./images/tuto-3-app-deployment.png "Kubernetes Master schedules pods on Nodes")
 
-![alt txt](./images/tuto-3-app-deployment.png "Kubernetes Master schedules Pods on Nodes")
+Once the application instances are created, the Deployment Controller continuously *monitors* those instances (i.e. it will monitors the changes in any resources allocated to the application it is in charge of: _Nodes_, network, storage, _Pods_...). If the _Node_ hosting an instance goes down or is deleted, the Deployment controller replaces the instance with an instance on another _Node_ in the cluster. This provides a self-healing mechanism to address machine failure or maintenance: since the text file describes the *desired target state* of the deployment, the Deployment controller actually detects that there is a deviation of the real deployment vs. the described target, and it reacts by deploying new _Pods_ to available _Nodes_ in order to get bask to the *desired state*.
 
-Once the application instances are created, the Deployment Controller continuously *monitors* those instances (i.e. it will monitors the changes in any resources allocated to the application it is in charge of: Nodes, network, storage, pods...). If the Node hosting an instance goes down or is deleted, the Deployment controller replaces the instance with an instance on another Node in the cluster. This provides a self-healing mechanism to address machine failure or maintenance: since the text file describes the *desired target state* of the deployment, the Deployment controller actually detects that there is a deviation of the real deployment vs. the described target, and it reacts by deploying new pods to available nodes in order to get bask to the *desired state*.
-
-In a pre-orchestration world, installation scripts would often be used to start applications, but they did not allow recovery from machine failure since there was little way to actually monitor the status of the application. By both creating your application instances and keeping them running across Nodes, Kubernetes Deployments provide a fundamentally different approach to application management.
+In a pre-orchestration world, installation scripts would often be used to start applications, but they did not allow recovery from machine failure since there was little way to actually monitor the status of the application. By both creating your application instances and keeping them running across _Nodes_, Kubernetes Deployments provide a fundamentally different approach to application management.
 
 
 ## 3.2 - Deploying your first app on Kubernetes
 
 In this module, you'll learn the most common `kubectl` commands needed to create *Deployments* that run your applications on a Kubernetes cluster.
 
-When you create a *Deployment*, you'll need to specify the container image for your application and the number of replicas that you want to run. You can change that information later by updating your *Deployment* (i.e. updating the YAML file and apply it to the Master using `kubectl`). Once the application is deployed, sections 3.5 and 3.6 of this tutorial discuss how you can scale and update your *Deployments*.
+When you create a *Deployment*, you'll need to specify the container image for your application and the number of replicas that you want to run. You can change that information later by updating your *Deployment* (i.e. updating the YAML file and apply it to the *Master* using `kubectl`). Once the application is deployed, sections 3.5 and 3.6 of this tutorial discuss how you can scale and update your *Deployments*.
 
 Applications need to be packaged into one of the supported container formats in order to be deployed on Kubernetes: here we will use **Docker**. For your first Deployment, you'll use a simple Python *"hello worl"* application. The docker image is available from DockerHub under my public repository, with the name `learn-kubernetes` and the tag `part3`: the **Appendix 1** explains how this image is built. The source files are in the `./app-hello` directory:
 
@@ -72,19 +86,19 @@ ENV NAME World
 CMD ["python", "app.py"]
 ```
 
-You can create and manage a Deployment by using the Kubernetes command line interface, `kubectl`. `kubectl` uses the Kubernetes API to interact with the cluster: its role is actually to translate commands which you enter (or more often YAML files containing your instructions) into API calls to the Kubernetes API server. It actually does *nothing*: it only passes your instructions to the Master via the API server, the Master does the job, and then `kubectl` translates back the Master's answers into a human readable format.
+You can create and manage a Deployment by using the Kubernetes command line interface, `kubectl`. `kubectl` uses the Kubernetes API to interact with the cluster: its role is actually to translate commands which you enter (or more often YAML files containing your instructions) into API calls to the Kubernetes API server. It actually does *nothing*: it only passes your instructions to the *Master* via the API server, the *Master* does the job, and then `kubectl` translates back the *Master*'s answers into a human readable format.
 
-At this moment in time, there is no application running on the Kubernetes cluster: this is visibile on the *Dashboard*, for instance if we ool at the *Deployments*.
+At this moment in time, there is no application running on the Kubernetes cluster: this is visible on the *Dashboard*, for instance if we look at the *Deployments*.
 
 ![alt txt](./images/tuto-3-dashboard-deployment-before.png "There is no deployment yet")
 
 Let’s deploy this first app on Kubernetes with the `kubectl create deployment` command. We need to provide the deployment name and app image location (include the full repository url if the container images are hosted outside Docker hub):
 
 ```bash
-tuto@laptop:~$ kubectl create deployment hello --image=tsouche/learn-kubernetes:part3
+tuto@laptop:~/projects/learn-kubernetes$ kubectl create deployment hello --image=tsouche/learn-kubernetes:part3
 deployment.apps/hello created
 ```
-It takes few seconds for the applciation to be deployed: the dashboad will first show an intermediate stae :
+It takes few seconds for the application to be deployed: the *Dashboard* will first show an intermediate state :
 
 ![alt txt](./images/tuto-3-dashboard-deployment-during.png "Work in progress...")
 
@@ -94,7 +108,7 @@ And then you can see the Deployment live:
 
 ![alt txt](./images/tuto-3-dashboard-deployment-pods.png "The application is live!!!")
 
-***Great!*** :smile: You just deployed your first application by creating a deployment! You can also see that it created a Pod called `hello-549897755f-gw997` as it is visible on the *Dashboard*. Now it hte time to get the same information in the terminal, using `kubectl` instead of the *Dashboard*: we will ask `kubectl` to look for all the Pods on the cluster:
+***Great!*** You just deployed your first application by creating a deployment! You can also see that it created a Pod called `hello-549897755f-gw997` as it is visible on the *Dashboard*. Now it hte time to get the same information in the terminal, using `kubectl` instead of the *Dashboard*: we will ask `kubectl` to look for all the _Pods_ on the cluster:
 
 ```bash
 tuto@laptop:/projects/kind$ kubectl get pods -o wide
@@ -104,100 +118,113 @@ hello-549897755f-gw997   1/1     Running   0          4m50s   10.244.1.2   k8s-t
 
 In few seconds, the application is deployed. :smile:
 
-> Note: from now on, we assume that you will go frequently on the *Dashboard* to check the changes happening on the cluster, and we will focus the tutorial on the CLI commands and results as they appear in the terminal. Again, the purpose of this tutorial is solely to get you aquainted with the Kubernetes concepts and to manipulate the cluster, while you may get far more efficient at manipulating directly the REST APIs or managing some actions via the *Dashboard* itself.
+> Note: from now on, we assume that you will go frequently on the *Dashboard* to check the changes happening on the cluster, and we will focus the tutorial only on the CLI commands and results as they appear in the terminal. Again, the purpose of this tutorial is solely to get you aquainted with the Kubernetes concepts and to manipulate the cluster, while you may get far more efficient at manipulating directly the REST APIs or managing some actions via the *Dashboard* itself.
 > So, as of now, we will not mention directly screenshots related to the progress on the tutorial, but you may see more screenshots in the `./images` directory.
 
 This `kubectl create deployment` command performed a few things for you:
-* searched for a suitable node where an instance of the application could be run (we have only 1 available node)
-* scheduled the application to run on that Node
-* configured the cluster to reschedule the instance on a new Node when needed
+
+* searched for a suitable _Node_ where an instance of the application could be run (we have only 1 available _Node_)
+* scheduled the application to run on that _Node_
+* configured the cluster to reschedule the instance on a new _Node_ when needed
 
 To list your deployments use the `kubectl get deployments` command:
 
 ```bash
-tuto@laptop:/projects/kind$ kubectl get deployments
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   1/1     1            1           42s
+hello   1/1     1            1           9m15s
 ```
 
 Let's details this line since you will see later in the tutorial many results
 similar to this one:
 * The `1/1` means `1 ready for 1 Desired`: 1 ready is the number of pod active (with  the container which is mentioned in the YAML file) and the YAML file specifies that we should always have 1 instance running.
 * The `1 UP-TO-DATE` means that the one active is of the right version: there is consequently no need for Kubernetes to update the Pod with a fresher version.
-* The `1 AVAILABLE` means that 1 instance of the Pod is actually available to the end-users (and there could be many reasons for which the Pod would not be available: for instance, the network could be down for a part of the cluster, thus the corresponding Node would be isolated, and Kubernetes would have to spawn a new instance of the Pod on another Node with good connectivity, in order to secure that the end-users keep having 1 instance truely available to them).
+* The `1 AVAILABLE` means that 1 instance of the Pod is actually available to the end-users (and there could be many reasons for which the Pod would not be available: for instance, the network could be down for a part of the cluster, thus the corresponding _Node_ would be isolated, and Kubernetes would have to spawn a new instance of the Pod on another _Node_ with good connectivity, in order to secure that the end-users keep having 1 instance truely available to them).
 
-We can see here that there is 1 deployment, running 1 single instance of your app. The instance is running inside a Docker container on one of the nodes. To get more details, we expand the results of the `kubectl get pods` command: we can see that this Pod is running on the slave 1.
+We can see here that there is 1 deployment, running 1 single instance of your app. The instance is running inside a Docker container on one of the _Nodes_. To get more details, we expand the results of the `kubectl get pods` command: we can see that this Pod is running on the slave 1.
 
 ```bash
-tuto@laptop:/projects/kind$ kubectl get pods
-*** insert the result here ***
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+hello-549897755f-gw997   1/1     Running   0          9m25s
 ```
+
 
 ## 3.3 - Connecting to your app from within the cluster
 
-Pods that are running inside Kubernetes are running on a private, isolated network. By default they are visible from other pods and services within the same kubernetes cluster, but not outside that network. When we use `kubectl`, we're interacting through an API endpoint to communicate with our application.
+_Pods_ that are running inside Kubernetes are running on a private, isolated network. By default they are visible from other _Pods_ and services within the same kubernetes cluster, but not outside that network. When we use `kubectl`, we're interacting - via the proxy - with an API endpoint to communicate with our application.
 
 We will cover other options on how to expose your application outside the kubernetes cluster in the later section. For the moment, we will still use the proxy that will forward communications into the cluster-wide, private network. The proxy can be terminated by pressing `Ctl-C` and won't show any output while its running.
 
 If you terminated the proxy, we will restart it in a second terminal tab:
 
 ```bash
-tuto@laptop:~$ gnome-terminal bash --tab -- kubectl proxy -p 8001
+tuto@laptop:~/projects/learn-kubernetes$ gnome-terminal bash --tab -- kubectl proxy -p 8001
+# _g_io_module_get_default: Found default implementation gvfs (GDaemonVfs) for ‘gio-vfs’
+# _g_io_module_get_default: Found default implementation dconf (DConfSettingsBackend) for ‘gsettings-backend’
+# watch_fast: "/org/gnome/terminal/legacy/" (establishing: 0, active: 0)
+# unwatch_fast: "/org/gnome/terminal/legacy/" (active: 0, establishing: 1)
+# watch_established: "/org/gnome/terminal/legacy/" (establishing: 0)
+tuto@laptop:~/projects/learn-kubernetes$
+```
+
+and we can see the following message on the newly create terminal tab:
+
+```bash
 Starting to serve on 127.0.0.1:8001
 ```
 
-The proxy enables direct access to the API from these terminals: you can see all those APIs hosted through the proxy endpoint. For example, we can query the version directly through the API using the `curl` command: *** mettre à jour avec la version 1.18 de Kubernetes !!!***
+Make sure that the proxy is actually running: it enables direct access to the API from these terminals: you can see all those APIs hosted through the proxy endpoint. For example, we can query the version directly through the API using the `curl` command:
 
 ```bash
-tuto@laptop:~$ curl http://localhost:8001/version
+tuto@laptop:~/projects/learn-kubernetes$ curl http://localhost:8001/version
 {
   "major": "1",
-  "minor": "16",
-  "gitVersion": "v1.16.3",
-  "gitCommit": "b3cbbae08ec52a7fc73d334838e18d17e8512749",
+  "minor": "18",
+  "gitVersion": "v1.18.2",
+  "gitCommit": "52c56ce7a8272c798dbc29846288d7cd9fbae032",
   "gitTreeState": "clean",
-  "buildDate": "2019-12-04T07:23:47Z",
-  "goVersion": "go1.12.12",
+  "buildDate": "2020-04-30T20:19:45Z",
+  "goVersion": "go1.13.9",
   "compiler": "gc",
   "platform": "linux/amd64"
 }
 ```
 
-If Port 8001 is not accessible, ensure that the `kubectl proxy` started above is running.
-
-The API server will automatically create an endpoint for each pod, based on the pod name, that is also accessible through the proxy.
-
-First we need to get the Pod name, and we'll store in the environment variable `POD_NAME`:
+The API server will automatically create an endpoint for each pod, based on the pod name, that is also accessible through the proxy. First we need to get the Pod name, and we'll store in the environment variable `POD_NAME`:
 
 ```bash
-tuto@laptop:~$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+tuto@laptop:~/projects/learn-kubernetes$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
 
-tuto@laptop:~$ echo $POD_NAME
-hello-5bfc654f49-bvbw5
+tuto@laptop:~/projects/learn-kubernetes$ echo $POD_NAME
+hello-549897755f-gw997
 ```
+Done: this will be useful later i the tutorial.
 
-In order for the new deployment to be accessible without using the Proxy, a 'Service' is required which will be explained in the next modules.
+In order for the new deployment to be accessible without using the Proxy, a _Service_ is required which will be explained in the next modules.
 
 
 ## 3.4 - Explore your app
 
-### 3.4.1 - Kubernetes Pods
+### 3.4.1 - Kubernetes _Pods_
 
 When you created a *Deployment* in Section 2, Kubernetes created a Pod to host your application instance. A Pod is a Kubernetes abstraction that represents a group of one or more application containers, and some shared resources for those containers. Those resources include:
-* Shared storage, as Volumes
+
+* Shared storage, as _Volumes_
 * Networking, as a unique cluster IP address
 * Information about how to run each container, such as the container image version or specific ports to use
 
-A Pod models an application-specific *logical host* and can contain different application containers which are relatively tightly coupled. For example, a Pod might include both the container with your Node.js app as well as a different container that feeds the data to be published by the Node.js webserver. The containers in a Pod share the same IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.
+A _Pod_ models an application-specific *logical host* and can contain different application containers which are relatively tightly coupled. For example, a _Pod_ might include both the container with your Node.js app as well as a different container that feeds the data to be published by the Node.js webserver. All containers in the same _Pod_ share the same IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same _Node_.
 
-As explained in Part 1, Pods are the atomic unit on the Kubernetes platform.
+As explained in Part 1, _Pods_ are the atomic unit on the Kubernetes platform.
 
-### 3.4.2 - Nodes
+### 3.4.2 - _Nodes_
 
-A Pod always runs on a Node. A Node is a worker machine in Kubernetes and may be either a virtual or a physical machine, depending on the cluster. Each Node is managed by the Master. A Node can have multiple pods, and the Kubernetes Master automatically handles scheduling the pods across the Nodes in the cluster. The Master's automatic scheduling takes into account the available resources on each Node.
+A _Pod_ always runs on a _Node_. A _Node_ is a worker machine in Kubernetes and may be either a virtual or a physical machine, depending on the cluster. Each _Node_ is managed by the *Master*. A _Node_ can have multiple _Pods_, and the Kubernetes *Master* automatically handles scheduling the _Pods_ across the _Nodes_ in the cluster. The *Master*'s automatic scheduling takes into account the available resources on each _Node_.
 
-Every Kubernetes Node runs at least:
-* `Kubelet`, a process responsible for communication between the Kubernetes Master and the Node; it manages the Pods and the containers running on a machine.
+Every Kubernetes _Node_ runs at least:
+
+* `Kubelet`, a process responsible for communication between the Kubernetes *Master* and the _Node_; it manages the _Pods_ and the containers running on a machine.
 * A container runtime (like `Docker`, `rkt`) responsible for pulling the container image from a registry, unpacking the container, and running the application.
 
 ![alt txt](./images/tuto-1-node-overview.png "Node overview")
@@ -207,37 +234,37 @@ Containers should only be scheduled together in a single Pod if they are tightly
 
 ### 3.4.3 - Check the application configuration
 
-We already have checked the pods with `kubectl`, so we know that a `kubernetes-bootcamp` pod runs on the `slave 2`. Now, let's view what containers are inside that Pod and what images are used to build those containers. To do so, we run the `kubectl describe pods` command:
+We already have checked the _Pods_ with `kubectl`, so we know that a `hello` _Pod_ runs on the `worker 3`. Now, let's view what containers are inside that _Pod_ and what images are used to build those containers. To do so, we run the `kubectl describe pods` command:
 
 ```bash
-tuto@laptop:~$ kubectl describe pods
-Name:         hello-5bfc654f49-bvbw5
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe pods
+Name:         hello-549897755f-gw997
 Namespace:    default
 Priority:     0
-Node:         newyear-worker/172.17.0.2
-Start Time:   Wed, 01 Jan 2020 16:21:15 +0100
+Node:         k8s-tuto-worker3/172.18.0.2
+Start Time:   Sun, 14 Jun 2020 17:55:54 +0200
 Labels:       app=hello
-              pod-template-hash=5bfc654f49
+              pod-template-hash=549897755f
 Annotations:  <none>
 Status:       Running
 IP:           10.244.1.2
 IPs:
   IP:           10.244.1.2
-Controlled By:  ReplicaSet/hello-5bfc654f49
+Controlled By:  ReplicaSet/hello-549897755f
 Containers:
   learn-kubernetes:
-    Container ID:   containerd://1efd70fa3f226739dd4a4f264327496eb2195a6c1399d6d2bcd1ce08143d1d48
+    Container ID:   containerd://18cffce73786e10fabdbdfab60b729877a1e66aa182a0a69f37bb6db0bd0cb32
     Image:          tsouche/learn-kubernetes:part3
     Image ID:       docker.io/tsouche/learn-kubernetes@sha256:ba5e8b3f6868f7e3753d53227a1ec7032f1c9fb5749b54d147ae3729f11f170c
     Port:           <none>
     Host Port:      <none>
     State:          Running
-      Started:      Wed, 01 Jan 2020 16:21:38 +0100
+      Started:      Sun, 14 Jun 2020 17:56:13 +0200
     Ready:          True
     Restart Count:  0
     Environment:    <none>
     Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from default-token-wtrfg (ro)
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-zhzb7 (ro)
 Conditions:
   Type              Status
   Initialized       True
@@ -245,81 +272,93 @@ Conditions:
   ContainersReady   True
   PodScheduled      True
 Volumes:
-  default-token-wtrfg:
+  default-token-zhzb7:
     Type:        Secret (a volume populated by a Secret)
-    SecretName:  default-token-wtrfg
+    SecretName:  default-token-zhzb7
     Optional:    false
 QoS Class:       BestEffort
 Node-Selectors:  <none>
 Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
                  node.kubernetes.io/unreachable:NoExecute for 300s
-Events:
-  Type    Reason     Age   From                     Message
-  ----    ------     ----  ----                     -------
-  Normal  Scheduled  2m5s  default-scheduler        Successfully assigned default/hello-5bfc654f49-bvbw5 to newyear-worker
-  Normal  Pulling    2m4s  kubelet, newyear-worker  Pulling image "tsouche/learn-kubernetes:part3"
-  Normal  Pulled     105s  kubelet, newyear-worker  Successfully pulled image "tsouche/learn-kubernetes:part3"
-  Normal  Created    102s  kubelet, newyear-worker  Created container learn-kubernetes
-  Normal  Started    102s  kubelet, newyear-worker  Started container learn-kubernetes
+Events:          <none>
 ```
 
-Whaou... Plenty of information is available, as you can see: IP address, the ports used and a list of events related to the lifecycle of the Pod.
+Whaou... :dizzy_face:  Plenty of information is available, as you can see: IP address, the ports used and a list of events related to the lifecycle of the _Pod_.
 
-The output of the describe command is extensive and covers some concepts that we didn’t explain yet, but don’t worry, they will become familiar by the end of this bootcamp.
+The output of the describe command is extensive and covers some concepts that we didn’t explain yet, but don’t worry, they will become familiar by the end of this tutorial.
 
-> Note: the `describe` command can be used to get detailed information about most of the Kubernetes primitives: Node, Pods, Deployments. The described output is designed to be human readable, not to be scripted against.
+> Note: the `kubectl describe` command can be used to get detailed information about most of the Kubernetes primitives: _Node_, _Pods_, _Deployments_. The described output is designed to be human readable, not to be scripted against.
 
 
 ### 3.4.4 - Show the app in the terminal
 
-Recall that Pods are running in an isolated, private network - so we continue with the `kubectl proxy` command in a second terminal window (on port 8001).
+Recall that _Pods_ are running in an isolated, private network - so we continue with the `kubectl proxy` command in a second terminal window (on port 8001).
 
-You have store the Pod name in the `POD_NAME` environment variable.
+You have stored the _Pod_ name in the `POD_NAME` environment variable.
 
 To see the output of our application, run a `curl` request.
 
 ```bash
-tuto@laptop:~$ kubectl get namespace
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get namespace
 NAME                   STATUS   AGE
-default                Active   10m
-kube-node-lease        Active   10m
-kube-public            Active   10m
-kube-system            Active   10m
-kubernetes-dashboard   Active   8m55s
+default                Active   5h39m
+kube-node-lease        Active   5h39m
+kube-public            Active   5h39m
+kube-system            Active   5h39m
+kubernetes-dashboard   Active   5h38m
+local-path-storage     Active   5h39m
 
-tuto@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/
+tuto@laptop:~/projects/learn-kubernetes$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/
 {
   "kind": "Pod",
   "apiVersion": "v1",
   "metadata": {
-    "name": "hello-5bfc654f49-bvbw5",
-    "generateName": "hello-5bfc654f49-",
+    "name": "hello-549897755f-gw997",
+    "generateName": "hello-549897755f-",
     "namespace": "default",
-    "selfLink": "/api/v1/namespaces/default/pods/hello-5bfc654f49-bvbw5",
-    "uid": "7a02f865-e0cf-4f29-90c1-a4c059f38e8b",
-    "resourceVersion": "964",
-    "creationTimestamp": "2020-01-01T15:21:15Z",
+    "selfLink": "/api/v1/namespaces/default/pods/hello-549897755f-gw997",
+    "uid": "89cb6c86-68e2-4444-bc86-fc2a60e120de",
+    "resourceVersion": "27321",
+    "creationTimestamp": "2020-06-14T15:55:54Z",
     "labels": {
       "app": "hello",
-      "pod-template-hash": "5bfc654f49"
+      "pod-template-hash": "549897755f"
     },
     "ownerReferences": [
       {
         "apiVersion": "apps/v1",
         "kind": "ReplicaSet",
-        "name": "hello-5bfc654f49",
-        "uid": "7db64fda-51dc-4d9a-82fc-05fc2cdc822e",
+        "name": "hello-549897755f",
+        "uid": "6bc5f6da-7e84-49ab-a891-1777ef0ce7a8",
         "controller": true,
         "blockOwnerDeletion": true
+      }
+    ],
+    "managedFields": [
+      {
+        "manager": "kube-controller-manager",
+        "operation": "Update",
+        "apiVersion": "v1",
+        "time": "2020-06-14T15:55:54Z",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {"f:metadata":{"f:generateName":{},"f:labels":{".":{},"f:app":{},"f:pod-template-hash":{}},"f:ownerReferences":{".":{},"k:{\"uid\":\"6bc5f6da-7e84-49ab-a891-1777ef0ce7a8\"}":{".":{},"f:apiVersion":{},"f:blockOwnerDeletion":{},"f:controller":{},"f:kind":{},"f:name":{},"f:uid":{}}}},"f:spec":{"f:containers":{"k:{\"name\":\"learn-kubernetes\"}":{".":{},"f:image":{},"f:imagePullPolicy":{},"f:name":{},"f:resources":{},"f:terminationMessagePath":{},"f:terminationMessagePolicy":{}}},"f:dnsPolicy":{},"f:enableServiceLinks":{},"f:restartPolicy":{},"f:schedulerName":{},"f:securityContext":{},"f:terminationGracePeriodSeconds":{}}}
+      },
+      {
+        "manager": "kubelet",
+        "operation": "Update",
+        "apiVersion": "v1",
+        "time": "2020-06-14T15:56:14Z",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {"f:status":{"f:conditions":{"k:{\"type\":\"ContainersReady\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}},"k:{\"type\":\"Initialized\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}},"k:{\"type\":\"Ready\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}}},"f:containerStatuses":{},"f:hostIP":{},"f:phase":{},"f:podIP":{},"f:podIPs":{".":{},"k:{\"ip\":\"10.244.1.2\"}":{".":{},"f:ip":{}}},"f:startTime":{}}}
       }
     ]
   },
   "spec": {
     "volumes": [
       {
-        "name": "default-token-wtrfg",
+        "name": "default-token-zhzb7",
         "secret": {
-          "secretName": "default-token-wtrfg",
+          "secretName": "default-token-zhzb7",
           "defaultMode": 420
         }
       }
@@ -333,7 +372,7 @@ tuto@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NA
         },
         "volumeMounts": [
           {
-            "name": "default-token-wtrfg",
+            "name": "default-token-zhzb7",
             "readOnly": true,
             "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount"
           }
@@ -348,7 +387,7 @@ tuto@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NA
     "dnsPolicy": "ClusterFirst",
     "serviceAccountName": "default",
     "serviceAccount": "default",
-    "nodeName": "newyear-worker",
+    "nodeName": "k8s-tuto-worker3",
     "securityContext": {
 
     },
@@ -377,41 +416,41 @@ tuto@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NA
         "type": "Initialized",
         "status": "True",
         "lastProbeTime": null,
-        "lastTransitionTime": "2020-01-01T15:21:15Z"
+        "lastTransitionTime": "2020-06-14T15:55:54Z"
       },
       {
         "type": "Ready",
         "status": "True",
         "lastProbeTime": null,
-        "lastTransitionTime": "2020-01-01T15:21:39Z"
+        "lastTransitionTime": "2020-06-14T15:56:14Z"
       },
       {
         "type": "ContainersReady",
         "status": "True",
         "lastProbeTime": null,
-        "lastTransitionTime": "2020-01-01T15:21:39Z"
+        "lastTransitionTime": "2020-06-14T15:56:14Z"
       },
       {
-        "type": "PodScheduled",
+        "type": "PodsScheduled",
         "status": "True",
         "lastProbeTime": null,
-        "lastTransitionTime": "2020-01-01T15:21:15Z"
+        "lastTransitionTime": "2020-06-14T15:55:54Z"
       }
     ],
-    "hostIP": "172.17.0.2",
+    "hostIP": "172.18.0.2",
     "podIP": "10.244.1.2",
     "podIPs": [
       {
         "ip": "10.244.1.2"
       }
     ],
-    "startTime": "2020-01-01T15:21:15Z",
+    "startTime": "2020-06-14T15:55:54Z",
     "containerStatuses": [
       {
         "name": "learn-kubernetes",
         "state": {
           "running": {
-            "startedAt": "2020-01-01T15:21:38Z"
+            "startedAt": "2020-06-14T15:56:13Z"
           }
         },
         "lastState": {
@@ -421,7 +460,7 @@ tuto@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NA
         "restartCount": 0,
         "image": "docker.io/tsouche/learn-kubernetes:part3",
         "imageID": "docker.io/tsouche/learn-kubernetes@sha256:ba5e8b3f6868f7e3753d53227a1ec7032f1c9fb5749b54d147ae3729f11f170c",
-        "containerID": "containerd://1efd70fa3f226739dd4a4f264327496eb2195a6c1399d6d2bcd1ce08143d1d48",
+        "containerID": "containerd://18cffce73786e10fabdbdfab60b729877a1e66aa182a0a69f37bb6db0bd0cb32",
         "started": true
       }
     ],
@@ -430,24 +469,25 @@ tuto@laptop:~$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NA
 }
 ```
 
-Pretty verbose, huh...
+Pretty verbose, huh... :yum:
 
-At least, it enables to demonstrate that we can access the cluster from the host machine, and poll directly the REST APIs to retrieve information about the currently deployed applications. Interestingly, doing so manually, we operate exactly the same way `kubectl` or the *Dashboard* do: they poll the REST APIs exposed by the cluster.
+At least, it demonstrates that we can access the cluster from the host machine, and poll directly the REST APIs to retrieve information about the currently deployed applications. Interestingly, doing so manually with `curl`, we operate exactly the same way `kubectl` or the *Dashboard* do: they poll the REST APIs exposed by the cluster.
 
-The url structure is self explicit:
-* it specifies the API version (v1 since versions 1.15 at least)
+The URL structure is self explicit:
+
+* it specifies the API version (v1 since Kubernetes versions 1.15 at least)
 * it then indicated the namespaces (here: `default`)
-* and then indicates the resource we need to poll (pods, deployment...).
+* and then indicates the resource we need to poll (_Pods_, _Deployment_...).
 
-In our case, we indicate 'pods' and which Pod (with its name) we want information on.
+In our case, as we stated `.../namespaces/default/pods/$POD_NAME/` in the URL, we indicated that we wanted information on a _Pod_ named `POD_NAME`.
 
 
 ### 3.4.5 - View the container logs
 
-Anything that the application would normally send to `STDOUT` becomes logs for the container within the Pod. We can retrieve these logs using the `kubectl logs` command:
+Anything that the application would normally send to `STDOUT` becomes logs for the container within the _Pod_. We can retrieve these logs using the `kubectl logs` command:
 
 ```bash
-tuto@laptop:~$ kubectl logs $POD_NAME
+tuto@laptop:~/projects/learn-kubernetes$ kubectl logs $POD_NAME
  * Serving Flask app "app" (lazy loading)
  * Environment: production
    WARNING: This is a development server. Do not use it in a production deployment.
@@ -461,11 +501,14 @@ We can see everything that the application sent to `stdout`, because we have not
 
 ### 3.4.6 - Executing command inside the container
 
-We can execute commands directly in the container once the Pod is up and running. For this, we use the `exec command` and use the name of the Pod as a parameter. Let’s list the environment variables:
-```
-tuto@laptop:~$ kubectl exec $POD_NAME env
+We can execute commands directly in the container once the _Pod_ is up and running. For this, we use the `kubectl exec <POD> <COMMAND>` command, and use the name of the _Pod_ as a parameter. It is actually very similar to the `docker -ti exec <COMMAND>` command, but here we need to identify which container we want to get logged into. Since the _Pod_ has only one container, the _Pod's_ name is enough to identify the container.
+
+So let’s list the environment variables as they exist within the container:
+
+```bash
+tuto@laptop:~/projects/learn-kubernetes$ kubectl exec $POD_NAME -- env
 PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-HOSTNAME=hello-5bfc654f49-bvbw5
+HOSTNAME=hello-549897755f-gw997
 LANG=C.UTF-8
 GPG_KEY=0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D
 PYTHON_VERSION=3.6.9
@@ -473,30 +516,30 @@ PYTHON_PIP_VERSION=19.3.1
 PYTHON_GET_PIP_URL=https://github.com/pypa/get-pip/raw/ffe826207a010164265d9cc807978e3604d18ca0/get-pip.py
 PYTHON_GET_PIP_SHA256=b86f36cc4345ae87bfd4f10ef6b2dbfa7a872fbff70608a1e43944d283fd0eee
 NAME=World
-KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
-KUBERNETES_PORT_443_TCP_PROTO=tcp
-KUBERNETES_PORT_443_TCP_PORT=443
 KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
 KUBERNETES_SERVICE_HOST=10.96.0.1
 KUBERNETES_SERVICE_PORT=443
 KUBERNETES_SERVICE_PORT_HTTPS=443
 KUBERNETES_PORT=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+KUBERNETES_PORT_443_TCP_PORT=443
 HOME=/root
 ```
 
-Again, worth mentioning that the name of the container itself can be omitted since we only have a single container in the Pod.
+Again, worth mentioning that the name of the container itself can be omitted since we only have a single container in the _Pod_.
 
-Next let’s start a bash session in the Pod’s container:
+Next let’s start a bash session in the _Pod’s_ container:
 
 ```bash
-tuto@laptop:~$ kubectl exec -ti $POD_NAME bash
-root@hello-5bfc654f49-bvbw5:/app#
+tuto@laptop:~/projects/learn-kubernetes$ kubectl exec -ti $POD_NAME -- bash
+root@hello-549897755f-gw997:/app#
 ```
 
-We have now an open console on the container where we run our Python application, and we are logged as root. The source code of the app is in the `app.py` file:
+We have now an open console on the container where we run our Python application, and we are logged as root. The source code of the app is in the `/app/app.py` file:
 
 ```bash
-root@hello-5bfc654f49-bvbw5:/app# cat app.py
+root@hello-549897755f-gw997:/app# cat app.py
 from flask import Flask
 import os
 import socket
@@ -516,35 +559,38 @@ if __name__ == "__main__":
 You can check that the application is up by running a `curl` command:
 
 ```bash
-root@hello-5bfc654f49-bvbw5:/app# curl localhost:80
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
+root@hello-549897755f-gw997:/app# curl localhost:80
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
+root@hello-549897755f-gw997:/app#
 ```
 
-> Note: here we used `localhost:80` because we executed the command inside the container inside the Pod. Outside the container, the port 8001 is exposed. If you cannot connect to localhost:80, check to make sure you have run the `kubectl exec command` and are launching the command from within the Pod
+> Note: here we used `localhost:80` because we executed the `curl` command inside the container inside the _Pod_. Outside the container, the port 8001 is exposed. If you cannot connect to localhost:80, check to make sure you have run the `kubectl exec -ti <POD_NAME> -- command` and are launching the command from *within* the _Pod_.
 
-To close your container connection type "exit".
+To close your container connection type `exit`.
 
 ```bash
 root@hello-5bfc654f49-bvbw5:/app# exit
 exit
-tuto@laptop:~$
+tuto@laptop:~/projects/learn-kubernetes$
 ```
+
 
 ## 3.5 - Expose Your App Publicly
 
 
 ### 3.5.1 - Overview of Kubernetes Services
 
-Kubernetes Pods are mortal. Pods in fact have a lifecycle. When a worker node dies, the Pods running on the Node are also lost. A `ReplicaSet` might then dynamically drive the cluster back to desired state via creation of new Pods to keep your application running. As another example, consider an image-processing backend with 3 replicas. Those replicas are exchangeable; the front-end system should not care about backend replicas or even if a Pod is lost and recreated. That said, each Pod in a Kubernetes cluster has a unique IP address, even Pods on the same Node, so there needs to be a way of automatically reconciling changes among Pods so that your applications continue to function.
+Kubernetes _Pods_ are mortal. _Pods_ in fact have a lifecycle. When a worker _Node_ dies, the _Pods_ running on the _Node_ are also lost. A `ReplicaSet` might then dynamically drive the cluster back to desired state via creation of new _Pods_ to keep your application running. As another example, consider an image-processing backend with 3 replicas. Those replicas are exchangeable; the front-end system should not care about backend replicas or even if a _Pod_ is lost and recreated. That said, each _Pod_ in a Kubernetes cluster has a unique IP address, even different _Pods_ on the same _Node_, so there needs to be a way of automatically reconciling changes among _Pods_ so that your applications continue to function.
 
-A `Service` in Kubernetes is an abstraction which defines a logical set of Pods and a policy by which to access them. Services enable a loose coupling between dependent Pods. A Service is defined using `YAML` (preferred) or `JSON`, like all Kubernetes objects. The set of Pods targeted by a Service is usually determined by a `LabelSelector`: a `LabelSelector` is a the usual way Kubernetes will identify the right pods.
+A _Service_ in Kubernetes is an abstraction which defines a logical set of _Pods_ and a policy by which to access them. _Services_ enable a loose coupling between dependent _Pods_. A _Service_ is defined using `YAML` (preferred) or `JSON`, like all Kubernetes objects. The set of _Pods_ targeted by a _Service_ is usually determined by a `LabelSelector`: a `LabelSelector` is a the usual way Kubernetes will identify the right _Pods_.
 
-Although each Pod has a unique IP address, those IPs are not exposed outside the cluster without a `Service`. `Services` allow your applications to receive traffic (from outside or from other applications runnig on the same cluster). `Services` can be exposed in different ways by specifying a type in the `ServiceSpec`:
+Although each _Pod_ has a unique IP address, those IPs are not exposed outside the cluster without a _Service_. _Services_ allow your applications to receive traffic (from outside or from other applications runnig on the same cluster). _Services_ can be exposed in different ways by specifying a type in the `ServiceSpec`:
+
 * #### ClusterIP (default)
-Exposes the `Service` on an internal IP in the cluster. This type makes the Service only reachable from within the cluster, by other services running on the same cluster.
+Exposes the _Service_ on an internal IP in the cluster. This type makes the _Service_ only reachable from within the cluster, by other services running on the same cluster.
 * #### NodePort
-Exposes the Service on the same port of each selected Node in the cluster using NAT. Makes a Service accessible from outside the cluster using `<NodeIP>:<NodePort>`.
-The principle here is that the `<NodeIP>` is shared by all services running on the same cluster: they only differentiate one from another by their port number. This is very convenient to enable a controlled communication between services, typically when they should primarily get exposed via an API gateway which will handle security and access rights.
+Exposes the _Service_ on the same port of each selected _Node_ in the cluster using NAT. Makes a _Service_ accessible from outside the cluster using `<NodeIP>:<NodePort>`.
+The principle here is that the `<NodeIP>` is shared by all _Services_ running on the same cluster: they only differentiate one from another by their port number. This is very convenient to enable a controlled communication between services, typically when they should primarily get exposed via an API gateway which will handle security and access rights.
 * #### LoadBalancer
 Creates an external load balancer in the current cloud (if supported) and assigns a fixed, external IP to the Service.
 Here, the service has its own IP and its own (set of) port(s): it is very easily reacheable from outside the cluster, which implies that it must embed security by design.
@@ -552,95 +598,94 @@ Here, the service has its own IP and its own (set of) port(s): it is very easily
 Exposes the Service using an arbitrary name (specified by `externalName` in the spec) by returning a `CNAME` record with the name. No proxy is used.
 
 
-Additionally, note that there are some use cases with `Services` that involve not defining selector in the spec. A `Service` created without selector will also not create the corresponding Endpoints object. This allows users to manually map a `Service` to specific `endpoints`. Another possibility why there may be no selector is you are strictly using type: `ExternalName`.
+Additionally, note that there are some use cases with _Services_ that involve not defining selector in the spec. A _Service_ created without selector will also not create the corresponding `Endpoints` object. This allows users to manually map a _Service_ to specific `Endpoints`.
 
 
-### 3.5.2 - Services and Labels
+### 3.5.2 - _Services_ and _Labels_
 
 
 ![alt txt](./images/tuto-3-expose-your-app-services-and-labels-1.png "Use a 'Service' to expose your app")
 
-A `Service` routes traffic across a set of Pods. `Services` are the abstraction that allow pods to die and replicate in Kubernetes without impacting your application. Discovery and routing among dependent Pods (such as the frontend and backend components in an application) is handled by Kubernetes Services.
+A _Service_ routes traffic across a set of _Pods_. _Services_ are the abstraction that allow _Pods_ to die and replicate in Kubernetes without impacting your application. Discovery and routing among dependent _Pods_ (such as the frontend and backend components in an application) is handled by Kubernetes _Services_.
 
-Services match a set of Pods using `labels` and `selectors`, a grouping primitive that allows logical operation on objects in Kubernetes. `Labels` are key/value pairs attached to objects and can be used in any number of ways:
+_Services_ match a set of _Pods_ using _labels_ and _selectors_, a grouping primitive that allows logical operation on objects in Kubernetes. _Labels_ are key/value pairs attached to objects and can be used in any number of ways:
+
 * Designate objects for development, test, and production
 * Embed version tags
 * Classify an object using tags
 
     ![alt txt](./images/tuto-3-expose-your-app-services-and-labels-2.png)
 
-Labels can be attached to objects at creation time or later on. They can be modified at any time. Let's expose our application now using a Service and apply some labels.
+_Labels_ can be attached to objects at creation time or later on. They can be modified at any time. Let's expose our application now using a _Service_ and apply some _labels_.
 
 
-### 3.5.3 - Create a new service
+### 3.5.3 - Create a new _service_
 
 
-Let’s verify that our application is running. We’ll use the `kubectl get` command and look for existing Pods:
+Let’s verify that our application is running. We’ll use the `kubectl get` command and look for existing _Pods_:
 
 ```bash
-tuto@laptop:~$ kubectl get pods
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods
 NAME                     READY   STATUS    RESTARTS   AGE
-hello-5bfc654f49-bvbw5   1/1     Running   0          8m
+hello-549897755f-gw997   1/1     Running   0          8m
 ```
 
-Next, let’s list the current Services from our cluster:
+Next, let’s list the current _Services_ from our cluster:
 
 ```bash
-tuto@laptop:~$ kubectl get services
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get services
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   12m
 ```
 
-We have a `Service` called `kubernetes` that is created by default when the cluster starts. To create a new service and expose it to external traffic we’ll use the `kubectl expose` command with `NodePort` as parameter.
+We have a _Service_ called `kubernetes` that is created by default when the cluster starts. To create a new service and expose it to external traffic, we’ll use the `kubectl expose` command with `NodePort` as parameter.
 
 ```bash
-tuto@laptop:~$ kubectl expose deployment/hello --type="NodePort" --port 80
+tuto@laptop:~/projects/learn-kubernetes$ kubectl expose deployment/hello --type="NodePort" --port 80
 service/hello exposed
 ```
 
-Let’s run again the `get services` command:
+Let’s run again the `kubectl get services` command:
 
 ```bash
-tuto@laptop:~$ kubectl get services
-NAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
-hello        NodePort    10.96.206.27   <none>        80:31100/TCP   5s
-kubernetes   ClusterIP   10.96.0.1      <none>        443/TCP        12m
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get services
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+hello        NodePort    10.111.127.82   <none>        80:30985/TCP   28s
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP        12m
 ```
 
-**Yes!** we have now a running Service called `hello`. Here we see that the `Service` received a unique cluster-IP, an internal port and no external-IP (the shared IP of the cluster must be used to access it).
+**Yes!** :smile: We have now a running _Service_ called `hello`. Here we see that the _Service_ received a unique cluster-IP, an internal port and no external-IP (the shared IP of the cluster must be used to access it).
 
-To find out what port was opened externally (by the `NodePort` option) we’ll run
-the `kubectl describe service` command:
+To find out what port was opened externally (by the `NodePort` option), we’ll run the `kubectl describe service` command:
 
 ```bash
-tuto@laptop:~$ kubectl describe services/hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe services/hello
 Name:                     hello
 Namespace:                default
 Labels:                   app=hello
 Annotations:              <none>
 Selector:                 app=hello
 Type:                     NodePort
-IP:                       10.96.206.27
+IP:                       10.111.127.82
 Port:                     <unset>  80/TCP
 TargetPort:               80/TCP
-NodePort:                 <unset>  31100/TCP
+NodePort:                 <unset>  30985/TCP
 Endpoints:                10.244.1.2:80
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
 ```
 
-We ceate an environment variable called `NODE_PORT` that has the value of the
-Node port assigned:
+We ceate an environment variable called `NODE_PORT` that has the value of the Node port assigned:
 
 ```bash
-tuto@laptop:~$ export NODE_PORT=31100
+tuto@laptop:~/projects/learn-kubernetes$ export NODE_PORT=30985
 ```
 
 Then we need to identify the external IP which is exposed for the whole cluster: this IP is used as the `endpoint` for the default `kubernetes` service:
 
 ```bash
-tuto@laptop:~$ kubectl describe services/kubernetes
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe services/kubernetes
 Name:              kubernetes
 Namespace:         default
 Labels:            component=apiserver
@@ -651,37 +696,37 @@ Type:              ClusterIP
 IP:                10.96.0.1
 Port:              https  443/TCP
 TargetPort:        6443/TCP
-Endpoints:         172.17.0.3:6443
+Endpoints:         172.18.0.5:6443
 Session Affinity:  None
 Events:            <none>
 ```
 
-Here we can see the cluster's shared `Endpoint`: `172.17.0.3`.
+Here we can see the cluster's shared `Endpoint`: `172.18.0.5`.
 
 ```bash
-tuto@laptop:~$ export ENDPOINT=172.17.0.3
+tuto@laptop:~/projects/learn-kubernetes$ export ENDPOINT=172.18.0.5
 ```
 
-Now that we have both the ip@ (`172.17.0.3`) and the port (`31100`), we can test
+Now that we have both the ip@ (`172.18.0.5`) and the port (`30985`), we can test
 that the app is exposed outside of the cluster using `curl`:
 
 ```bash
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
 ```
 
-And we get a response from the server. The Service is exposed.
+And we get a response from the server: the _Service_ is exposed.
 
 
 ### 3.5.4 - Using labels
 
-The `Deployment` created automatically a `label` for our Pod. With `describe deployment` command, you can see the name of the `label`:
+The _Deployment_ created automatically a _label_ for our _Pod_. With `kubectl describe deployment` command, you can see the name of the _label_:
 
 ```bash
-tuto@laptop:~$ kubectl describe deployment
+kubectl describe deployment
 Name:                   hello
 Namespace:              default
-CreationTimestamp:      Wed, 01 Jan 2020 16:21:15 +0100
+CreationTimestamp:      Sun, 14 Jun 2020 17:55:54 +0200
 Labels:                 app=hello
 Annotations:            deployment.kubernetes.io/revision: 1
 Selector:               app=hello
@@ -705,129 +750,126 @@ Conditions:
   Available      True    MinimumReplicasAvailable
   Progressing    True    NewReplicaSetAvailable
 OldReplicaSets:  <none>
-NewReplicaSet:   hello-5bfc654f49 (1/1 replicas created)
-Events:
-  Type    Reason             Age   From                   Message
-  ----    ------             ----  ----                   -------
-  Normal  ScalingReplicaSet  10m   deployment-controller  Scaled up replica set hello-5bfc654f49 to 1
+NewReplicaSet:   hello-549897755f (1/1 replicas created)
+Events:          <none>
 ```
 
-As you can see, the label is '`app`' and its value is '`hello`', so it appears as '`app=hello`'. Let’s use this label to query our list of Pods. We’ll use the `kubectl get pods` command with `-l` as a parameter, followed by the label values:
+As you can see, the _label_ is '`app`' and its value is '`hello`', so it appears as '`app=hello`'. Let’s use this _label_ to query our list of _Pods_. We’ll use the `kubectl get pods` command with `-l` as a parameter, followed by the _label_ values:
 
 ```bash
-tuto@laptop:~$ kubectl get pods -l app=hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -l app=hello
 NAME                     READY   STATUS    RESTARTS   AGE
-hello-5bfc654f49-bvbw5   1/1     Running   0          11m
+hello-549897755f-gw997   1/1     Running   0          11m
 ```
 
 You can do the same to list the existing services:
 
 ```bash
-tuto@laptop:~$ kubectl get services -l app=hello
-NAME    TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
-hello   NodePort   10.96.206.27   <none>        80:31100/TCP   2m59s
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get services -l app=hello
+NAME    TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+hello   NodePort   10.111.127.82   <none>        80:30985/TCP   2m59s
 ```
 
-Get the name of the Pod and store it in the `POD_NAME` environment variable:
+Get the name of the _Pod_ and store it in the `POD_NAME` environment variable:
 
 ```bash
-tuto@laptop:~$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
-tuto@laptop:~$ echo $POD_NAME
-hello-5bfc654f49-bvbw5
+tuto@laptop:~/projects/learn-kubernetes$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+tuto@laptop:~/projects/learn-kubernetes$ echo $POD_NAME
+hello-549897755f-gw997
 ```
 
-To apply a new label, we use the `kubectl label` command followed by the object type,
-object name and the new label: we create the label '`version`' and we assign it
-a value of '`v1`'.
+To apply a new _label_, we use the `kubectl label` command followed by the object type, object name and the new _label_: we create the _label_ '`version`' and we assign it a value of '`v1`'.
 
 ```bash
-tuto@laptop:~$ kubectl label pod $POD_NAME version=v1
-pod/hello-5bfc654f49-bvbw5 labeled
+tuto@laptop:~/projects/learn-kubernetes$ kubectl label pod $POD_NAME version=v1
+pod/hello-549897755f-gw997 labeled
 ```
 
-This will apply a new label to our Pod (we pinned the application version to the Pod), and we can check it with the `kubectl describe pod` command:
+This will apply a new _label_ to our _Pod_ (we pinned the application version to the _Pod_), and we can check it with the `kubectl describe pod` command:
 
 ```bash
-tuto@laptop:~$ kubectl describe pods $POD_NAME
-Name:         hello-5bfc654f49-bvbw5
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe pods $POD_NAME
+Name:         hello-549897755f-gw997
 Namespace:    default
 Priority:     0
-Node:         newyear-worker/172.17.0.2
-Start Time:   Wed, 01 Jan 2020 16:21:15 +0100
+Node:         k8s-tuto-worker3/172.18.0.2
+Start Time:   Sun, 14 Jun 2020 17:55:54 +0200
 Labels:       app=hello
-              pod-template-hash=5bfc654f49
+              pod-template-hash=549897755f
               version=v1
 Annotations:  <none>
 Status:       Running
 IP:           10.244.1.2
-...
+[...]
 ```
 
-We see here that both '`app`' and '`version`' labels are attached now to our Pod (as well as another label generated by Kubernetes for its own usage). And we can query now the list of pods using the new label:
+We see here that both '`app`' and '`version`' labels are attached now to our _Pod_ (as well as another _label_ `pod-template-hash` generated by Kubernetes for its own usage). And we can query now the list of _Pods_ using the new _label_:
 
 ```bash
-tuto@laptop:~$ kubectl get pods -l version=v1
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -l version=v1
 NAME                     READY   STATUS    RESTARTS   AGE
-hello-5bfc654f49-bvbw5   1/1     Running   0          13m
+hello-549897755f-gw997   1/1     Running   0          13m
 ```
 
-And we see the Pod.
+... and we see the _Pod_.
 
 
-### 3.5.5 - Deleting a service
+### 3.5.5 - Deleting a _Service_
 
-To delete Services you can use the `delete service` command. `Labels` can be used also here:
+To delete _Services_ you can use the `kubectl delete service` command. _Labels_ can be used also here:
 
 ```bash
-tuto@laptop:~$ kubectl delete service -l app=hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl delete service -l app=hello
 service "hello" deleted
 ```
 
-Confirm that the service is gone:
+Confirm that the _Service_ is gone:
 
 ```bash
-tuto@laptop:~$ kubectl get services
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get services
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   18m
 ```
 
-This confirms that our Service was removed. To confirm that route is not
-exposed anymore you can `curl` the previously exposed IP and port:
+This confirms that our _Service_ was removed. To confirm that route is not exposed anymore you can `curl` the previously exposed IP and port:
 
 ```bash
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-curl: (7) Failed to connect to 172.17.0.3 port 31100: Connection refused
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+curl: (7) Failed to connect to 172.18.0.5 port 30985: Connection refused
 ```
 
-This proves that the app is not reachable anymore from outside of the cluster, but it does NOT imply that the Pods are down: by putting don the `Service`, we only impacted the way the cluster is exposing these Pods to the outside world. But not how they run **within** the cluster.
+This proves that the app is not reachable anymore from outside of the cluster, but it does NOT imply that the _Pods_ are down: by putting down the _Service_, we only impacted the way the cluster is exposing these _Pods_ to the outside world. But not how they run **within** the cluster.
 
-You can confirm that the app is still running with a `curl` inside the pod:
-```
-tuto@laptop:~$ kubectl exec -ti $POD_NAME curl localhost:80
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
+You can confirm that the app is still running with a `curl` from inside the _Pod_:
+
+```bash
+tuto@laptop:~/projects/learn-kubernetes$ kubectl exec -ti $POD_NAME -- curl localhost:80
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
 ```
 
-We see here that the application is up. This is because the `Deployment` is managing the application. To shut down the application, you would need to delete the `Deployment` as well.
+We see here that the application is up. This is because the _Deployment_ is managing the application. To shut down the application, you would need to delete the _Deployment_ as well.
 
-So let'now restart the `Service` so that we can finish this part of the tutorial:
-```
-tuto@laptop:~$ kubectl expose deployment/hello --type="NodePort" --port 80
+So let's now restart the _Service_ so that we can finish this part of the tutorial:
+
+```bash
+tuto@laptop:~/projects/learn-kubernetes$ kubectl expose deployment/hello --type="NodePort" --port 80
 service/hello exposed
 ```
 
 And we need to refresh the `NodePort` value and test that the app is still reachable from within the cluster:
-```
-tuto@laptop:~$ kubectl describe svc/hello
+
+```bash
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe svc/hello
 Name:                     hello
 Namespace:                default
 Labels:                   app=hello
 Annotations:              <none>
 Selector:                 app=hello
 Type:                     NodePort
-IP:                       10.105.161.103
+IP:                       10.100.216.34
 Port:                     <unset>  80/TCP
 TargetPort:               80/TCP
-NodePort:                 <unset>  31769/TCP
+NodePort:                 <unset>  32731/TCP
 Endpoints:                10.244.1.2:80
 Session Affinity:         None
 External Traffic Policy:  Cluster
@@ -835,10 +877,11 @@ Events:                   <none>
 ```
 
 The `NodePort` was renewed, and we must refresh our variable:
-```
-tuto@laptop:~$ NODE_PORT=31769
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
+
+```bash
+tuto@laptop:~/projects/learn-kubernetes$ NODE_PORT=32731
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
 ```
 
 We're ready for the next section :-)
@@ -848,27 +891,27 @@ We're ready for the next section :-)
 
 ### 3.6.1 - Explanation - Scaling an application
 
-In the previous modules we created a `Deployment`, and then exposed it publicly via a `Service`. The `Deployment` created only one Pod for running our application. When traffic increases, we will need to scale the application to keep up with user demand.
+In the previous modules we created a __Deployment__, and then exposed it publicly via a _Service_. The _Deployment_ created only one _Pod_ for running our application. When traffic increases, we will need to scale the application to keep up with user demand.
 
 ![alt txt](./images/tuto-3-scale-your-app-1.png "App with 1 Pod")
 
-Scaling is accomplished by changing the number of replicas in a `Deployment`, i.e. updating the `Deployment` YAML file and change the indicated number of replicas. And that's it: you have nothing else to do.
+Scaling is accomplished by changing the number of replicas in a _Deployment_, i.e. updating the _Deployment_ YAML file and change the indicated number of replicas. And that's it: you have nothing else to do.
 
 ![alt txt](./images/tuto-3-scale-your-app-2.png "App scaled to 4 Pods")
 
-Scaling out a `Deployment` will ensure new Pods are created and scheduled to Nodes with available resources. Scaling will increase the number of Pods to the new `desired state`. Kubernetes also supports autoscaling of Pods, but we will not see it here in detail. Scaling to zero is also possible, and it will terminate all Pods of the specified Deployment.
+Scaling out a _Deployment_ will ensure new _Pods_ are created and scheduled to _Nodes_ which have available resources. Scaling will increase the number of _Pods_ to the new `desired state`. Kubernetes also supports autoscaling of _Pods_, but we will not see it here in detail. Scaling to zero is also possible, and it will terminate all _Pods_ of the specified _Deployment_.
 
-Running multiple instances of an application will require a way to distribute the traffic to all of them. `Services` have an integrated load-balancer that will distribute network traffic to all Pods of an exposed `Deployment`. `Services` will monitor continuously the running Pods using endpoints, to ensure the traffic is sent only to available Pods.
+Running multiple instances of an application will require a way to distribute the traffic to all of them. _Services_ have an integrated load-balancer that will distribute network traffic to all _Pods_ of an exposed _Deployment_. _Services_ will monitor continuously the running _Pods_ using `endpoints`, to ensure the traffic is sent only to available _Pods_.
 
 Once you have multiple instances of an Application running, you would be able to do Rolling updates without downtime. We'll cover that in the next module. Now, let's go to the online terminal and scale our application.
 
 
 ### 3.6.2 - Scaling a deployment
 
-To list your deployments use the `kubectl get deployments` command:
+To list your _Deployments_ use the `kubectl get deployments` command:
 
 ```bash
-tuto@laptop:~$ kubectl get deployments
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   1/1     1            1           19m
 ```
@@ -880,57 +923,44 @@ This shows:
 * `UP-TO-DATE` is the number of replicas that were updated to match the desired (configured) state
 * `AVAILABLE` shows how many replicas are actually available to the users
 
-Next, let’s scale the Deployment to 4 replicas. We’ll use the `kubectl scale` command, followed by the deployment type, name and desired number of instances:
+Next, let’s scale the _Deployment_ to 4 replicas. We’ll use the `kubectl scale` command, followed by the _Deployment_ type, name and desired number of instances:
 
 ```bash
-tuto@laptop:~$ kubectl scale deployments/hello --replicas=4
+tuto@laptop:~/projects/learn-kubernetes$ kubectl scale deployments/hello --replicas=4
 deployment.apps/hello scaled
 ```
 
 To list your Deployments once again, use `kubectl get deployments`:
 
 ```bash
-tuto@laptop:~$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   2/4     4            2           41m
+hello   1/4     4            1           40m
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods
+NAME                     READY   STATUS              RESTARTS   AGE
+hello-549897755f-9rgd6   0/1     ContainerCreating   0          47s
+hello-549897755f-gw997   1/1     Running             0          40m
+hello-549897755f-hc5n9   0/1     ContainerCreating   0          47s
+hello-549897755f-jvk22   0/1     ContainerCreating   0          47s
 
-tuto@laptop:~$ kubectl get deployments
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+hello-549897755f-9rgd6   1/1     Running   0          61s
+hello-549897755f-gw997   1/1     Running   0          28h
+hello-549897755f-hc5n9   1/1     Running   0          61s
+hello-549897755f-jvk22   1/1     Running   0          61s
+
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   4/4     4            4           41m
 ```
 
-The change was applied, and we end up with 4 instances of the application available. Next, let’s check if the number of Pods changed:
+The change was applied, and we now have 4 _Pods_, with different IP addresses. The change was registered in the _Deployment_ events log. To check that, use the `kubectl describe` command:
 
 ```bash
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running             0          20m   10.244.1.2   newyear-worker    <none>           <none>
-hello-5bfc654f49-hbpjq   0/1     ContainerCreating   0          1s    <none>       newyear-worker    <none>           <none>
-hello-5bfc654f49-smdmq   0/1     ContainerCreating   0          1s    <none>       newyear-worker2   <none>           <none>
-hello-5bfc654f49-v8k5q   0/1     ContainerCreating   0          1s    <none>       newyear-worker2   <none>           <none>
-
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running             0          20m   10.244.1.2   newyear-worker    <none>           <none>
-hello-5bfc654f49-hbpjq   1/1     Running             0          2s    10.244.1.3   newyear-worker    <none>           <none>
-hello-5bfc654f49-smdmq   0/1     ContainerCreating   0          2s    <none>       newyear-worker2   <none>           <none>
-hello-5bfc654f49-v8k5q   0/1     ContainerCreating   0          2s    <none>       newyear-worker2   <none>           <none>
-
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running   0          21m   10.244.1.2   newyear-worker    <none>           <none>
-hello-5bfc654f49-hbpjq   1/1     Running   0          25s   10.244.1.3   newyear-worker    <none>           <none>
-hello-5bfc654f49-smdmq   1/1     Running   0          25s   10.244.2.6   newyear-worker2   <none>           <none>
-hello-5bfc654f49-v8k5q   1/1     Running   0          25s   10.244.2.7   newyear-worker2   <none>           <none>
-```
-
-There are 4 Pods now, with different IP addresses. The change was registered in the Deployment events log. To check that, use the describe command:
-
-```bash
-tuto@laptop:~$ kubectl describe deployments/hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe deployments/hello
 Name:                   hello
 Namespace:              default
-CreationTimestamp:      Wed, 01 Jan 2020 16:21:15 +0100
+CreationTimestamp:      Sun, 14 Jun 2020 17:55:54 +0200
 Labels:                 app=hello
 Annotations:            deployment.kubernetes.io/revision: 1
 Selector:               app=hello
@@ -954,57 +984,62 @@ Conditions:
   Progressing    True    NewReplicaSetAvailable
   Available      True    MinimumReplicasAvailable
 OldReplicaSets:  <none>
-NewReplicaSet:   hello-5bfc654f49 (4/4 replicas created)
+NewReplicaSet:   hello-549897755f (4/4 replicas created)
 Events:
-  Type    Reason             Age   From                   Message
-  ----    ------             ----  ----                   -------
-  Normal  ScalingReplicaSet  21m   deployment-controller  Scaled up replica set hello-5bfc654f49 to 1
-  Normal  ScalingReplicaSet  84s   deployment-controller  Scaled up replica set hello-5bfc654f49 to 4
+  Type    Reason             Age    From                   Message
+  ----    ------             ----   ----                   -------
+  Normal  ScalingReplicaSet  8m53s  deployment-controller  Scaled up replica set hello-549897755f to 4
 ```
 
-You can also view in the output of this command that there are 4 replicas now. Interestingly, you can also see at the bottom a full history of the Deployment, showing how it was set initially at 1 instance, and then scaled up to 4.
+You can also view in the output of this command that there are 4 replicas now. Interestingly, you can also see at the bottom a full history of the _Deployment_, showing how it was set initially at 1 instance, and then scaled up to 4.
 
 
 ### 3.6.3 - Load Balancing
 
-Let’s check that the Service is load-balancing the traffic. To find out the exposed IP and Port we can use the `kubectl describe service` command as we learned in the previous section:
+Let’s check that the _Service_ is load-balancing the traffic. To find out the exposed IP and Port we can use the `kubectl describe service` command as we learned in the previous section:
 
 ```bash
-tuto@laptop:~$ kubectl describe services/hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe services/hello
 Name:                     hello
 Namespace:                default
 Labels:                   app=hello
 Annotations:              <none>
 Selector:                 app=hello
 Type:                     NodePort
-IP:                       10.105.161.103
+IP:                       10.100.216.34
 Port:                     <unset>  80/TCP
 TargetPort:               80/TCP
-NodePort:                 <unset>  31769/TCP
-Endpoints:                10.244.1.2:80,10.244.1.3:80,10.244.2.6:80 + 1 more...
+NodePort:                 <unset>  32731/TCP
+Endpoints:                10.244.1.2:80,10.244.2.2:80,10.244.3.3:80 + 1 more...
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
 ```
 
-The `ENDPOINT` (the one used for the whole cluster, including the kubernetes Service) did not change, so we can now do a `curl` to the exposed IP and port. Execute the command multiple times:
+The `ENDPOINT` (the one used for the whole cluster, including the kubernetes _Service_) did not change, so we can now do a `curl` to the exposed IP and port. Execute the command multiple times:
 
 ```bash
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-v8k5q<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-smdmq<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-v8k5q<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-bvbw5<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-5bfc654f49-hbpjq<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-9rgd6<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-9rgd6<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-hc5n9<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-9rgd6<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-jvk22<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-hc5n9<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-jvk22<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
 ```
 
-We hit a different Pod with every request. This demonstrates that the load-balancing is working.
+We hit a different _Pod_ with every request. This demonstrates that the load-balancing is working.
 
 
 ### 3.6.4 - Scale Down
@@ -1012,69 +1047,70 @@ We hit a different Pod with every request. This demonstrates that the load-balan
 To scale down the Service to 2 replicas, run again the `kubectl scale` command:
 
 ```bash
-tuto@laptop:~$ kubectl scale deployments/hello --replicas=2
+tuto@laptop:~/projects/learn-kubernetes$ kubectl scale deployments/hello --replicas=2
 deployment.apps/hello scaled
 ```
 
 List the Deployments to check if the change was applied with the `kubectl get deployments` command:
 
 ```bash
-tuto@laptop:~$ kubectl get deployments
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   2/2     2            2           29m
 ```
 
-The number of replicas decreased to 2. List the number of Pods:
+The number of replicas decreased to 2. List the number of _Pods_:
 
 ```bash
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS        RESTARTS   AGE     IP           NODE              NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running       0          26m     10.244.1.2   newyear-worker    <none>           <none>
-hello-5bfc654f49-hbpjq   1/1     Running       0          5m45s   10.244.1.3   newyear-worker    <none>           <none>
-hello-5bfc654f49-smdmq   1/1     Terminating   0          5m45s   10.244.2.6   newyear-worker2   <none>           <none>
-hello-5bfc654f49-v8k5q   1/1     Terminating   0          5m45s   10.244.2.7   newyear-worker2   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                     READY   STATUS        RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-549897755f-9rgd6   1/1     Terminating   0          60s   10.244.3.4   k8s-tuto-worker4   <none>           <none>
+hello-549897755f-gw997   1/1     Running       0          28h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-549897755f-hc5n9   1/1     Running       0          19m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
+hello-549897755f-jvk22   1/1     Terminating   0          60s   10.244.4.4   k8s-tuto-worker    <none>           <none>
 
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE     IP           NODE             NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running   0          26m     10.244.1.2   newyear-worker   <none>           <none>
-hello-5bfc654f49-hbpjq   1/1     Running   0          6m18s   10.244.1.3   newyear-worker   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-549897755f-gw997   1/1     Running   0          28h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-549897755f-hc5n9   1/1     Running   0          19m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
 ```
 
-This confirms that 2 Pods were terminated. You may see that the two remaining Pods are both running on the slave 1, which may not be optimal: this can actually be managed more tightly by setting affinity/anti-affinity rules on the Deployment, but we will not get into this level of details here.
+This confirms that 2 _Pods_ were terminated.
 
 
 ## 3.7 - Update Your App
 
 ### 3.7.1 - Updating an application
 
-Users expect applications to be available all the time and developers are expected to deploy new versions of them several times a day. In Kubernetes this is done with rolling updates. Rolling updates allow Deployments' update to take place with zero downtime by incrementally updating Pods instances with new ones. The new Pods will be scheduled on Nodes with available resources.
+Users expect applications to be available all the time and developers are expected to deploy new versions of them several times a day. In Kubernetes, this is done with rolling updates. Rolling updates allow _Deployments_' update to take place with zero downtime by incrementally updating _Pods_ instances with new ones. The new _Pods_ will be scheduled on _Nodes_ with available resources.
 
-In the previous module, we scaled our application to run multiple instances. This is a requirement for performing updates without affecting application availability. By default, the maximum number of Pods that can be unavailable during the update and the maximum number of new Pods that can be created, is one. Both options can be configured to either numbers or percentages (of Pods). In Kubernetes, updates are versioned and any Deployment update can be reverted to previous (stable) version.
+In the previous module, we scaled our application to run multiple instances. This is a requirement for performing updates without affecting application availability. By default, the maximum number of _Pods_ that can be unavailable during the update and the maximum number of new _Pods_ that can be created, is one. Both options can be configured to either numbers or percentages (of _Pods_). In Kubernetes, updates are versioned and any _Deployment_ update can be reverted to previous (stable) version.
 
 
 ### 3.7.2 - Rolling updates overview
 
-Let's take an example of an application composed of 4 Pods deployed on 3 Nodes, following a `Deployment` **A**. A `Service` exposes this application with the ip@ set to `10.3.250.236` (visible from within the cluster).
+Let's take an example of an application composed of 4 _Pods_ deployed on 3 _Nodes_, following a _Deployment_ **A**. A _Service_ exposes this application with the IP set to `10.3.250.236` (visible from within the cluster).
 
 ![alt txt](./images/tuto-3-update-your-app-1.png "Update your app - current status")
 
-When you want to update the application, you simply change the `Deployment` **A** YAML file to indicate the `Deployement` that it should use a new image:
+When you want to update the application, you simply change the _Deployment_ **A** YAML file to indicate the _Deployement_ that it should use a new image:
 
 ![alt txt](./images/tuto-3-update-your-app-2.png "Update your app - step 1")
 
-The Master will spawn a new Pod with the new image, and will shut down the old Pods on the same Node. The new Pod get assigned a new ip@.
+The *Master* will spawn a new _Pod_ with the new image, and will shut down the old _Pods_ on the same _Node_. The new _Pod_ get assigned a new IP.
 
 ![alt txt](./images/tuto-3-update-your-app-3.png "Update your app - step 2")
 
-Continuing the Rolling update, the Master will do the same with a second old Pod: spawn a new Pod and shut down the old Pod.
+Continuing the Rolling update, the *Master* will do the same with a second old _Pod_: spawn a new _Pod_ and shut down the old _Pod_.
 
 ![alt txt](./images/tuto-3-update-your-app-4.png "Update your app - final status")
 
-At the end of the process, all 4 Pods are new (i.e. with the new image) and the `Service` still is up, with the same ip@ as before the update. Thanks to this, the external worl (i.e. anyone outside the `Service`) has not seen any visible change: the Service was always up, with the same ip@, and the only visible symptom is that -d drunring the update - some request may still be handled by the old version of the paplciation while some other will already be handled by the new version, giving during the transition period a possibly inconsistent customer experience.
+At the end of the process, all 4 _Pods_ are new (i.e. with the new image) and the _Service_ still is up, with the same IP as before the update. Thanks to this, the external world (i.e. anyone outside the _Service_) has not seen any visible change: the _Service_ was always up, with the same IP, and the only visible symptom is that - during the update - some request may still be handled by the old version of the paplciation while some others will already be handled by the new version, thus delivering during the transition period a possibly inconsistent customer experience.
 
-Similar to application Scaling, if a Deployment is exposed publicly, the Service will load-balance the traffic only to available Pods during the update. An available Pod is an instance that is available to the users of the application.
+Similar to application Scaling, if a _Deployment_ is exposed publicly, the _Service_ will load-balance the traffic only to available _Pods_ during the update. An available _Pod_ is an instance that is available to the users of the application.
 
 Rolling updates allow the following actions:
+
 * Promote an application from one environment to another (via container image updates)
 * Rollback to previous versions
 * Continuous Integration and Continuous Delivery of applications with zero downtime
@@ -1085,135 +1121,105 @@ Rolling updates allow the following actions:
 To list your deployments use the get deployments command:
 
 ```bash
-tuto@laptop:~$ kubectl get deployments
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   2/2     2            2           31m
+hello   2/2     2            2           55m
 ```
 
-To list the running Pods use the get pods command:
+To list the running _Pods_ use the `kubectl get pods` command:
 
 ```bash
-tuto@laptop:~$ kubectl get pods
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods
 NAME                     READY   STATUS    RESTARTS   AGE
-hello-5bfc654f49-bvbw5   1/1     Running   0          31m
-hello-5bfc654f49-hbpjq   1/1     Running   0          10m
+hello-549897755f-gw997   1/1     Running   0          55m
+hello-549897755f-hc5n9   1/1     Running   0          34m
 ```
 
-To view the current image version of the app, run a `kubectl describe` command against the Pods (look at the Image field):
+To view the current image version of the app, run a `kubectl describe` command against the _Pods_ (look at the Image field):
 
 ```bash
-tuto@laptop:~$ kubectl describe pods
-Name:         hello-5bfc654f49-bvbw5
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe pods
+Name:         hello-549897755f-gw997
 Namespace:    default
 Priority:     0
-Node:         newyear-worker/172.17.0.2
-Start Time:   Wed, 01 Jan 2020 16:21:15 +0100
+Node:         k8s-tuto-worker3/172.18.0.2
+Start Time:   Sun, 14 Jun 2020 17:55:54 +0200
 Labels:       app=hello
-              pod-template-hash=5bfc654f49
+              pod-template-hash=549897755f
               version=v1
 Annotations:  <none>
 Status:       Running
 IP:           10.244.1.2
-IPs:
-  IP:           10.244.1.2
-Controlled By:  ReplicaSet/hello-5bfc654f49
-Containers:
-  learn-kubernetes:
-    Container ID:   containerd://1efd70fa3f226739dd4a4f264327496eb2195a6c1399d6d2bcd1ce08143d1d48
-    Image:          tsouche/learn-kubernetes:part3
-    Image ID:       docker.io/tsouche/learn-kubernetes@sha256:ba5e8b3f6868f7e3753d53227a1ec7032f1c9fb5749b54d147ae3729f11f170c
 [...]
-Events:
-  Type    Reason     Age   From                     Message
-  ----    ------     ----  ----                     -------
-  Normal  Scheduled  31m   default-scheduler        Successfully assigned default/hello-5bfc654f49-bvbw5 to newyear-worker
-  Normal  Pulling    31m   kubelet, newyear-worker  Pulling image "tsouche/learn-kubernetes:part3"
-  Normal  Pulled     31m   kubelet, newyear-worker  Successfully pulled image "tsouche/learn-kubernetes:part3"
-  Normal  Created    31m   kubelet, newyear-worker  Created container learn-kubernetes
-  Normal  Started    31m   kubelet, newyear-worker  Started container learn-kubernetes
+Events:          <none>
 
 
-Name:         hello-5bfc654f49-hbpjq
+Name:         hello-549897755f-hc5n9
 Namespace:    default
 Priority:     0
-Node:         newyear-worker/172.17.0.2
-Start Time:   Wed, 01 Jan 2020 16:41:50 +0100
+Node:         k8s-tuto-worker2/172.18.0.3
+Start Time:   Mon, 15 Jun 2020 22:20:51 +0200
 Labels:       app=hello
-              pod-template-hash=5bfc654f49
+              pod-template-hash=549897755f
 Annotations:  <none>
 Status:       Running
-IP:           10.244.1.3
-IPs:
-  IP:           10.244.1.3
-Controlled By:  ReplicaSet/hello-5bfc654f49
-Containers:
-  learn-kubernetes:
-    Container ID:   containerd://c73bec287600c26e3566c9455197fcfe9dc3e09455c7286ba11518085d95d823
-    Image:          tsouche/learn-kubernetes:part3
-    Image ID:       docker.io/tsouche/learn-kubernetes@sha256:ba5e8b3f6868f7e3753d53227a1ec7032f1c9fb5749b54d147ae3729f11f170c
+IP:           10.244.2.2
 [...]
 Events:
-  Type    Reason     Age   From                     Message
-  ----    ------     ----  ----                     -------
-  Normal  Scheduled  11m   default-scheduler        Successfully assigned default/hello-5bfc654f49-hbpjq to newyear-worker
-  Normal  Pulled     11m   kubelet, newyear-worker  Container image "tsouche/learn-kubernetes:part3" already present on machine
-  Normal  Created    11m   kubelet, newyear-worker  Created container learn-kubernetes
-  Normal  Started    11m   kubelet, newyear-worker  Started container learn-kubernetes
+  Type    Reason     Age   From                       Message
+  ----    ------     ----  ----                       -------
+  Normal  Scheduled  35m   default-scheduler          Successfully assigned default/hello-549897755f-hc5n9 to k8s-tuto-worker2
+  Normal  Pulling    35m   kubelet, k8s-tuto-worker2  Pulling image "tsouche/learn-kubernetes:part3"
+  Normal  Pulled     35m   kubelet, k8s-tuto-worker2  Successfully pulled image "tsouche/learn-kubernetes:part3"
+  Normal  Created    34m   kubelet, k8s-tuto-worker2  Created container learn-kubernetes
+  Normal  Started    34m   kubelet, k8s-tuto-worker2  Started container learn-kubernetes
 ```
 
-To update the image of the application to version 2, use the `kubectl set image` command, followed by the deployment name and the new image version:
+To update the image of the application to `version 2`, use the `kubectl set image` command, followed by the deployment name and the new image version:
 
 ```bash
-tuto@laptop:~$ kubectl set image deployment/hello learn-kubernetes=tsouche/learn-kubernetes:part3v2
+tuto@laptop:~/projects/learn-kubernetes$ kubectl set image deployment/hello learn-kubernetes=tsouche/learn-kubernetes:part3v2
 deployment.apps/hello image updated
 ```
 
-The command notified the Deployment to use a different image for your app and initiated a rolling update. Check the status of the new Pods, and view the old one terminating with the `kubectl get pods` command:
+The command notified the Deployment to use a different image for your app and initiated a rolling update. Check the status of the new _Pods_, and view the old one terminating with the `kubectl get pods` command:
 
 ```bash
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE             NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running             0          65m   10.244.1.2   newyear-worker   <none>           <none>
-hello-5bfc654f49-hbpjq   1/1     Running             0          44m   10.244.1.3   newyear-worker   <none>           <none>
-hello-85b6f6f55c-25vtd   0/1     ContainerCreating   0          2s    <none>       newyear-worker   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-549897755f-gw997   1/1     Running             0          29h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-549897755f-hc5n9   1/1     Running             0          44m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-t9j68     0/1     ContainerCreating   0          14s   <none>       k8s-tuto-worker    <none>           <none>
 
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE             NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running   0          65m   10.244.1.2   newyear-worker   <none>           <none>
-hello-5bfc654f49-hbpjq   1/1     Running   0          44m   10.244.1.3   newyear-worker   <none>           <none>
-hello-85b6f6f55c-25vtd   1/1     Running   0          21s   10.244.1.6   newyear-worker   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-549897755f-gw997   1/1     Running             0          29h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-549897755f-hc5n9   1/1     Terminating         0          44m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-59hf8     0/1     ContainerCreating   0          8s    <none>       k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-t9j68     1/1     Running             0          29s   10.244.4.5   k8s-tuto-worker    <none>           <none>
 
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Running             0          65m   10.244.1.2   newyear-worker    <none>           <none>
-hello-5bfc654f49-hbpjq   1/1     Terminating         0          45m   10.244.1.3   newyear-worker    <none>           <none>
-hello-85b6f6f55c-25vtd   1/1     Running             0          25s   10.244.1.6   newyear-worker    <none>           <none>
-hello-85b6f6f55c-ts57p   0/1     ContainerCreating   0          4s    <none>       newyear-worker2   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                     READY   STATUS        RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-549897755f-gw997   1/1     Terminating   0          29h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-549897755f-hc5n9   0/1     Terminating   0          44m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-59hf8     1/1     Running       0          34s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-t9j68     1/1     Running       0          55s   10.244.4.5   k8s-tuto-worker    <none>           <none>
 
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS        RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Terminating   0          65m   10.244.1.2   newyear-worker    <none>           <none>
-hello-5bfc654f49-hbpjq   1/1     Terminating   0          45m   10.244.1.3   newyear-worker    <none>           <none>
-hello-85b6f6f55c-25vtd   1/1     Running       0          45s   10.244.1.6   newyear-worker    <none>           <none>
-hello-85b6f6f55c-ts57p   1/1     Running       0          24s   10.244.2.8   newyear-worker2   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                     READY   STATUS        RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-549897755f-gw997   1/1     Terminating   0          29h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-c7f4b66c-59hf8     1/1     Running       0          42s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-t9j68     1/1     Running       0          63s   10.244.4.5   k8s-tuto-worker    <none>           <none>
 
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS        RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-5bfc654f49-bvbw5   1/1     Terminating   0          66m   10.244.1.2   newyear-worker    <none>           <none>
-hello-85b6f6f55c-25vtd   1/1     Running       0          55s   10.244.1.6   newyear-worker    <none>           <none>
-hello-85b6f6f55c-ts57p   1/1     Running       0          34s   10.244.2.8   newyear-worker2   <none>           <none>
-
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-85b6f6f55c-25vtd   1/1     Running   0          94s   10.244.1.6   newyear-worker    <none>           <none>
-hello-85b6f6f55c-ts57p   1/1     Running   0          73s   10.244.2.8   newyear-worker2   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                   READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-c7f4b66c-59hf8   1/1     Running   0          61s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-t9j68   1/1     Running   0          82s   10.244.4.5   k8s-tuto-worker    <none>           <none>
 ```
 
-Following the progress of the update, you see new Pods being created, and as the update progresses, old Pods being terminated, while the Deployment Controller always keeps (at least) the desired number of Pods active.
+Following the progress of the update, you see new _Pods_ being created, and as the update progresses, old _Pods_ being terminated, while the _Deployment Controller_ always keeps (at least) the desired number of _Pods_ active.
 
 Since during a certain transition period both versions are active at the same time, the end users would not all get exactly the same experience: some will still hit the `v1` version, while other will already hit the `v2` version. However, this transition period may be kept reasonably short... if everything happens nominal.
-
-Also, note that the two `v1` Pods were running on the same slave ('newyear-worker') while the two `v2` Pods are balanced across the two slaves.
 
 
 ### 3.7.4 - Verify an update
@@ -1221,48 +1227,73 @@ Also, note that the two `v1` Pods were running on the same slave ('newyear-worke
 First, let’s check that the App is running. To find out the exposed IP and Port we can use describe service:
 
 ```bash
-tuto@laptop:~$ kubectl describe services/hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe services/hello
+Name:                     hello
+Namespace:                default
+Labels:                   app=hello
+Annotations:              <none>
+Selector:                 app=hello
+Type:                     NodePort
+IP:                       10.100.216.34
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  32731/TCP
+Endpoints:                10.244.1.3:80,10.244.1.4:80,10.244.2.3:80 + 5 more...
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
 ```
 
-The `NodePort` did not change (since the update took place within the service which kept up), and neither did the `EntryPoint` for the whole cluster, so we can still poll the service at the same URL:
+The `NodePort` did not change (since the update took place within the _Service_ which kept up), and neither did the `EntryPoint` for the whole cluster, so we can still poll the service at the same URL:
 
 ```bash
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-25vtd<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-ts57p<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-25vtd<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-25vtd<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-ts57p<br/>
-tuto@laptop:~$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-85b6f6f55c-ts57p<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-59hf8<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-t9j68<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-kbvq6<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-nhjl8<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-nhjl8<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-59hf8<br/>
+tuto@laptop:~/projects/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
 ```
 
 So we can observe that:
-* we hit a different Pod with every request, and
-* all Pods are running the latest version (`v2`).
+
+* we hit a different _Pod_ with every request, and
+* all _Pods_ are running the latest version (`v2`).
 
 The update can be confirmed also by running a rollout status command:
 
 ```bash
-tuto@laptop:~$ kubectl rollout status deployments/hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl rollout status deployments/hello
 deployment "hello" successfully rolled out
 ```
 
-To view the current image version of the app, run a describe command against the Pods:
+To view the current image version of the app, run a `kubectl describe` command against the _Pods_:
 
 ```bash
-tuto@laptop:~$ kubectl describe deployment/hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe deployment/hello
 Name:                   hello
 Namespace:              default
-CreationTimestamp:      Sat, 04 Jan 2020 20:42:27 +0100
+CreationTimestamp:      Sun, 14 Jun 2020 17:55:54 +0200
 Labels:                 app=hello
 Annotations:            deployment.kubernetes.io/revision: 2
 Selector:               app=hello
-Replicas:               6 desired | 6 updated | 6 total | 6 available | 0 unavailable
+Replicas:               4 desired | 4 updated | 4 total | 4 available | 0 unavailable
 StrategyType:           RollingUpdate
 MinReadySeconds:        0
 RollingUpdateStrategy:  25% max unavailable, 25% max surge
@@ -1285,82 +1316,91 @@ We run now the version `v2` of the app!
 Let’s perform another update, and deploy image tagged as `v10` :
 
 ```bash
-tuto@laptop:~$ kubectl set image deployment/hello learn-kubernetes=tsouche/learn-kubernetes:part3v10
+tuto@laptop:~/projects/learn-kubernetes$ kubectl set image deployment/hello learn-kubernetes=tsouche/learn-kubernetes:part3v10
 deployment.apps/hello image updated
 ```
 
-Use get deployments to see the status of the deployment:
+Use `kubectl get deployments` to see the status of the _Deployment_:
 
 ```bash
-tuto@laptop:~$ kubectl get deployments
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   2/2     1            2           81m
 ```
 
-And something is wrong… We do not have the desired number of Pods available. List the Pods again:
+And something is wrong… We do not have the desired number of _Pods_ available. List the _Pods_ again:
 
 ```bash
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS             RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-68f977cb64-5fbcj   0/1     ImagePullBackOff   0          27s   10.244.1.7   newyear-worker    <none>           <none>
-hello-85b6f6f55c-25vtd   1/1     Running            0          17m   10.244.1.6   newyear-worker    <none>           <none>
-hello-85b6f6f55c-ts57p   1/1     Running            0          16m   10.244.2.8   newyear-worker2   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                     READY   STATUS         RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-7bfb444dbb-kpbsv   0/1     ErrImagePull   0          5s    10.244.1.8   k8s-tuto-worker3   <none>           <none>
+hello-c7f4b66c-59hf8     1/1     Running        0          35m   10.244.2.3   k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-t9j68     1/1     Running        0          36m   10.244.4.5   k8s-tuto-worker    <none>           <none>
 ```
 
-A describe command on the Pods should give more insights:
+A describe command on the _Pods_ should give more insights:
 
 ```bash
-tuto@laptop:~$ kubectl describe pods
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe pods
 ```
 
 The output is, as usual, very verbose, so we isolate only the events associated to the first Pod:
 
 ```bash
 Events:
-  Type     Reason     Age                From                     Message
-  ----     ------     ----               ----                     -------
-  Normal   Scheduled  54s                default-scheduler        Successfully assigned default/hello-68f977cb64-5fbcj to newyear-worker
-  Normal   BackOff    22s (x2 over 51s)  kubelet, newyear-worker  Back-off pulling image "tsouche/learn-kubernetes:part3v10"
-  Warning  Failed     22s (x2 over 51s)  kubelet, newyear-worker  Error: ImagePullBackOff
-  Normal   Pulling    7s (x3 over 53s)   kubelet, newyear-worker  Pulling image "tsouche/learn-kubernetes:part3v10"
-  Warning  Failed     5s (x3 over 51s)   kubelet, newyear-worker  Failed to pull image "tsouche/learn-kubernetes:part3v10": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/tsouche/learn-kubernetes:part3v10": failed to resolve reference "docker.io/tsouche/learn-kubernetes:part3v10": docker.io/tsouche/learn-kubernetes:part3v10: not found
-  Warning  Failed     5s (x3 over 51s)   kubelet, newyear-worker  Error: ErrImagePull
+  Type     Reason     Age                 From                       Message
+  ----     ------     ----                ----                       -------
+  Normal   Scheduled  2m1s                default-scheduler          Successfully assigned default/hello-7bfb444dbb-kpbsv to k8s-tuto-worker3
+  Normal   Pulling    28s (x4 over 2m1s)  kubelet, k8s-tuto-worker3  Pulling image "tsouche/learn-kubernetes:part3v10"
+  Warning  Failed     26s (x4 over 119s)  kubelet, k8s-tuto-worker3  Failed to pull image "tsouche/learn-kubernetes:part3v10": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/tsouche/learn-kubernetes:part3v10": failed to resolve reference "docker.io/tsouche/learn-kubernetes:part3v10": docker.io/tsouche/learn-kubernetes:part3v10: not found
+  Warning  Failed     26s (x4 over 119s)  kubelet, k8s-tuto-worker3  Error: ErrImagePull
+  Warning  Failed     16s (x6 over 119s)  kubelet, k8s-tuto-worker3  Error: ImagePullBackOff
+  Normal   BackOff    1s (x7 over 119s)   kubelet, k8s-tuto-worker3  Back-off pulling image "tsouche/learn-kubernetes:part3v10"
 ```
 
-There is no image tagged `part3v10` in the repository, so Kubernetes is not able to pull the image. Let’s roll back to our previously working version. We’ll use the `rollout undo` command:
+There is no image tagged `part3v10` in the repository, so Kubernetes is not able to pull the image. Let’s roll back to our previously working version. We’ll use the `kubectl rollout undo` command:
 
 ```bash
-tuto@laptop:~$ kubectl rollout undo deployments/hello
+tuto@laptop:~/projects/learn-kubernetes$ kubectl rollout undo deployments/hello
 deployment.apps/hello rolled back
 ```
 
-The rollout command reverted the deployment to the previous known state (v2 of the image). Updates are versioned and you can revert to any previously know state of a Deployment. List again the Pods:
+The rollout command reverted the _Deployment_ to the previous known state (`v2` of the image). Updates are versioned and you can revert to any previously know state of a Deployment. List again the _Pods_:
 
 ```bash
-tuto@laptop:~$kubectl get deployments
+tuto@laptop:~/projects/learn-kubernetes$kubectl get deployments
 NAME    READY   UP-TO-DATE   AVAILABLE   AGE
 hello   2/2     2            2           83m
 
-tuto@laptop:~$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE              NOMINATED NODE   READINESS GATES
-hello-85b6f6f55c-25vtd   1/1     Running   0          18m   10.244.1.6   newyear-worker    <none>           <none>
-hello-85b6f6f55c-ts57p   1/1     Running   0          18m   10.244.2.8   newyear-worker2   <none>           <none>
+tuto@laptop:~/projects/learn-kubernetes$ kubectl get pods -o wide
+NAME                   READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-c7f4b66c-59hf8   1/1     Running   0          40m   10.244.2.3   k8s-tuto-worker2   <none>           <none>
+hello-c7f4b66c-t9j68   1/1     Running   0          40m   10.244.4.5   k8s-tuto-worker    <none>           <none>
 ```
 
-Two Pods are running. Check again the image deployed on the them:
+Two _Pods_ are running. Check again the image deployed on the them:
 
 ```bash
-tuto@laptop:~$ kubectl describe pods
+tuto@laptop:~/projects/learn-kubernetes$ kubectl describe pods
+[...]
+Events:
+  Type    Reason     Age   From                      Message
+  ----    ------     ----  ----                      -------
+  Normal  Scheduled  41m   default-scheduler         Successfully assigned default/hello-c7f4b66c-t9j68 to k8s-tuto-worker
+  Normal  Pulling    41m   kubelet, k8s-tuto-worker  Pulling image "tsouche/learn-kubernetes:part3v2"
+  Normal  Pulled     41m   kubelet, k8s-tuto-worker  Successfully pulled image "tsouche/learn-kubernetes:part3v2"
+  Normal  Created    41m   kubelet, k8s-tuto-worker  Created container learn-kubernetes
+  Normal  Started    41m   kubelet, k8s-tuto-worker  Started container learn-kubernetes
 ```
 
-We see that the deployment is using a stable version of the `app` (v2). The Rollback was successful.
+We see that the _Deployment_ is using a stable version of the `app` (`v2`). The Rollback was successful.
 
 
 ## 3.8 - Conclusion
 
 At this step in the tutorial, you know how to deploy a stateless app on the cluster, and how to manage simple operations like a scaling in and out, or a version update.
 
-Let's make it clear however that this is greatly simplified by the high level of automation made possible through Kubernetes: you actually only managed 'labels', and every command we did though `kubectl` could have been done by managing YAML files (i.e. by updating YAML files and feeding these files to the Master) or by directly accessing the REST APIs like the *Dashboard* does.
+Let's make it clear however that this is greatly simplified by the high level of automation made possible through Kubernetes: you actually only managed _labels_, and every command we did though `kubectl` could have been done by managing YAML files (i.e. by updating YAML files and feeding these files to the *Master*) or by directly accessing the REST APIs like the *Dashboard* does.
 
 It is time now to get into slightly more complex things like a...
-... stateful app: let's get to Part 4 of the tutorial.
+... stateful app: let's get to **Part 4** of the tutorial.
