@@ -1,3 +1,2 @@
-vm-images/*
-.vagrant/*
-sandbox/*
+.vagrant
+sandbox
