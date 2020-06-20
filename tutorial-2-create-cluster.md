@@ -38,7 +38,7 @@ Previous deployments may have left temporary files, which may interfere with the
 
 ```bash
 tuto@laptop:~$ cd learn-kubernetes/
-tuto@laptop:~/learn-kubernetes$ ./deloy.sh
+tuto@laptop:~/learn-kubernetes$ ./deploy.sh
 =======================================================================
  Create/populate the sandbox
 =======================================================================
@@ -135,7 +135,7 @@ The END
 Look at the bottom of the `deploy.sh` script output: a *token* is displayed (the very very long sequence of characters, starting here with `eyJhbGciOiJS...` and finishing with `...33wijehpQ`): this token is *unique* (i.e. it will change everytime you will start up a new cluster) so you need to **copy** the one which will be displayed when you run the `deploy.sh` script on your machine.
 
 The `deploy.sh` script launched automaticaly:
-1. another tab in the terminal, which runs the kubectl proxy: this proxy exposes the Kubernetes cluster towards the local machine. This means that, thanks to this proxy, you will be able to acces the API server and query requests to the Kubernetes APIs (via a browser or via `kubectl`).
+1. another tab in the terminal, which runs the `kubectl proxy`: this proxy exposes the Kubernetes cluster towards the local machine. This means that, thanks to this proxy, you will be able to acces the API server and query requests to the Kubernetes APIs (via a browser or via `kubectl`).
 ```
 Starting to serve on 127.0.0.1:8001
 ```

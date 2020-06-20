@@ -43,7 +43,7 @@ spec:
         lifecycle:
           preStop:
             exec:
-              command: 
+              command:
               - /bin/sh
               - -c
               - nodetool drain
@@ -70,8 +70,12 @@ spec:
             - /bin/bash
             - -c
             - /ready-probe.sh
-          initialDelaySeconds: 15
-          timeoutSeconds: 5
+          # TSO: I changed the timeouts from respectively 15 and 5s to 25 and 15
+          # seconds, in order to adapt to the speed of my laptop and to give a
+          # chance to start properly the cassnadra cluster on a Kind cluster
+          # running on my laptop.
+          initialDelaySeconds: 25
+          timeoutSeconds: 15
         # These volume mounts are persistent. They are like inline claims,
         # but not exactly because the names need to match exactly one of
         # the stateful pod volumes.
@@ -86,15 +90,17 @@ spec:
       name: cassandra-data
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: fast
+      # TSO: I changed the storageclass to 'standard' which is the local
+      # storageclass implemented as 'default' on Kind (as of version 0.7).
+      storageClassName: standard
       resources:
         requests:
           storage: 1Gi
 ---
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
-metadata:
-  name: fast
-provisioner: k8s.io/minikube-hostpath
-parameters:
-  type: pd-ssd
+#kind: StorageClass
+#apiVersion: storage.k8s.io/v1
+#metadata:
+#  name: fast
+#provisioner: k8s.io/minikube-hostpath
+#parameters:
+#  type: pd-ssd

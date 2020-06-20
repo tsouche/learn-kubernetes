@@ -66,7 +66,7 @@ ENV NAME World
 CMD ["python", "app.py"]
 ```
 
-You can create and manage a Deployment by using the Kubernetes command line interface, `kubectl`. `kubectl` uses the Kubernetes API to interact with the cluster: its role is actually to translate commands which you enter (or more often YAML files containing your instructions) into API calls to the Kubernetes API server. It actually does *nothing*: it only passes your instructions to the *Master* via the API server, the *Master* does the job, and then `kubectl` translates back the *Master*'s answers into a human readable format.
+You can create and manage a _Deployment_ by using the Kubernetes command line interface, `kubectl`. `kubectl` uses the Kubernetes API to interact with the cluster: its role is actually to translate commands which you enter (or more often YAML files containing your instructions) into API calls to the Kubernetes API server. It actually does *nothing*: it only passes your instructions to the *Master* via the API server, the *Master* does the job, and then `kubectl` translates back the *Master*'s answers into a human readable format.
 
 At this moment in time, there is no application running on the Kubernetes cluster: this is visible on the *Dashboard*, for instance if we look at the *Deployments*.
 
@@ -91,9 +91,9 @@ And then you can see the Deployment live:
 ***Great!*** You just deployed your first application by creating a deployment! You can also see that it created a Pod called `hello-549897755f-gw997` as it is visible on the *Dashboard*. Now it hte time to get the same information in the terminal, using `kubectl` instead of the *Dashboard*: we will ask `kubectl` to look for all the _Pods_ on the cluster:
 
 ```bash
-tuto@laptop:/projects/kind$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
-hello-549897755f-gw997   1/1     Running   0          4m50s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+tuto@laptop:/projects/kind$ kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+hello-549897755f-gw997   1/1     Running   0          4m50s
 ```
 
 In few seconds, the application is deployed. :smile:
@@ -121,12 +121,12 @@ similar to this one:
 * The `1 UP-TO-DATE` means that the one active is of the right version: there is consequently no need for Kubernetes to update the Pod with a fresher version.
 * The `1 AVAILABLE` means that 1 instance of the Pod is actually available to the end-users (and there could be many reasons for which the Pod would not be available: for instance, the network could be down for a part of the cluster, thus the corresponding _Node_ would be isolated, and Kubernetes would have to spawn a new instance of the Pod on another _Node_ with good connectivity, in order to secure that the end-users keep having 1 instance truely available to them).
 
-We can see here that there is 1 deployment, running 1 single instance of your app. The instance is running inside a Docker container on one of the _Nodes_. To get more details, we expand the results of the `kubectl get pods` command: we can see that this Pod is running on the slave 1.
+We can see here that there is 1 deployment, running 1 single instance of your app. The instance is running inside a Docker container on one of the _Nodes_. To get more details, we expand the results of the `kubectl get pods` command: we can see that this Pod is running on the worker 3.
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods
-NAME                     READY   STATUS    RESTARTS   AGE
-hello-549897755f-gw997   1/1     Running   0          9m25s
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
+NAME                     READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+hello-549897755f-gw997   1/1     Running   0          9m25s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
 ```
 
 
@@ -134,7 +134,7 @@ hello-549897755f-gw997   1/1     Running   0          9m25s
 
 _Pods_ that are running inside Kubernetes are running on a private, isolated network. By default they are visible from other _Pods_ and services within the same kubernetes cluster, but not outside that network. When we use `kubectl`, we're interacting - via the proxy - with an API endpoint to communicate with our application.
 
-We will cover other options on how to expose your application outside the kubernetes cluster in the later section. For the moment, we will still use the proxy that will forward communications into the cluster-wide, private network. The proxy can be terminated by pressing `Ctl-C` and won't show any output while its running.
+We will cover other options on how to expose your application outside the kubernetes cluster in the later section. For the moment, we will still use the proxy that will forward communications into the cluster-wide, private network. The proxy can be terminated by pressing <kbd>Ctl-C</kbd> and won't show any output while its running.
 
 If you terminated the proxy, we will restart it in a second terminal tab:
 
@@ -179,16 +179,16 @@ tuto@laptop:~/learn-kubernetes$ export POD_NAME=$(kubectl get pods -o go-templat
 tuto@laptop:~/learn-kubernetes$ echo $POD_NAME
 hello-549897755f-gw997
 ```
-Done: this will be useful later i the tutorial.
+Done: this will be useful later in the tutorial.
 
-In order for the new deployment to be accessible without using the Proxy, a _Service_ is required which will be explained in the next modules.
+In order for the new deployment to be accessible without using the _Proxy_, a _Service_ is required which will be explained in the next modules.
 
 
 ## 3.4 - Explore your app
 
 ### 3.4.1 - Kubernetes _Pods_
 
-When you created a *Deployment* in Section 2, Kubernetes created a Pod to host your application instance. A Pod is a Kubernetes abstraction that represents a group of one or more application containers, and some shared resources for those containers. Those resources include:
+When you created a *Deployment* in Section 2, Kubernetes created a _Pod_ to host your application instance. A _Pod_ is a Kubernetes abstraction that represents a group of one or more application containers, and some shared resources for those containers. Those resources include:
 
 * Shared storage, as _Volumes_
 * Networking, as a unique cluster IP address
@@ -481,7 +481,7 @@ We can see everything that the application sent to `stdout`, because we have not
 
 ### 3.4.6 - Executing command inside the container
 
-We can execute commands directly in the container once the _Pod_ is up and running. For this, we use the `kubectl exec <POD> <COMMAND>` command, and use the name of the _Pod_ as a parameter. It is actually very similar to the `docker -ti exec <COMMAND>` command, but here we need to identify which container we want to get logged into. Since the _Pod_ has only one container, the _Pod's_ name is enough to identify the container.
+We can execute commands directly in the container once the _Pod_ is up and running. For this, we use the `kubectl exec <POD> -- <COMMAND>` command, and use the name of the _Pod_ as a parameter. It is actually very similar to the `docker -ti exec <COMMAND>` command, but here we need to identify which container we want to get logged into. Since the _Pod_ has only one container, the _Pod's_ name is enough to identify the container.
 
 So let’s list the environment variables as they exist within the container:
 
@@ -518,7 +518,7 @@ root@hello-549897755f-gw997:/app#
 
 We have now an open console on the container where we run our Python application, and we are logged as root. The source code of the app is in the `/app/app.py` file:
 
-```bash
+```python
 root@hello-549897755f-gw997:/app# cat app.py
 from flask import Flask
 import os
@@ -530,10 +530,11 @@ app = Flask(__name__)
 def hello():
     html = "<h3>Hello {name}!</h3>" \
            "<b>Hostname:</b> {hostname}<br/>"
-    return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
+    return html.format(name=os.getenv("NAME", "world"), \
+           hostname=socket.gethostname())
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80)
+    app.run(host="0.0.0.0", port=80)
 ```
 
 You can check that the application is up by running a `curl` command:
@@ -703,7 +704,7 @@ And we get a response from the server: the _Service_ is exposed.
 The _Deployment_ created automatically a _label_ for our _Pod_. With `kubectl describe deployment` command, you can see the name of the _label_:
 
 ```bash
-kubectl describe deployment
+tuto@laptop:~/learn-kubernetes$ kubectl describe deployment
 Name:                   hello
 Namespace:              default
 CreationTimestamp:      Sun, 14 Jun 2020 17:55:54 +0200
