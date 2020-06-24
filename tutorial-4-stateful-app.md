@@ -1,35 +1,10 @@
 # Part 4 - Deploy a stateful app
 
-<!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
-
-- [Part 4 - Deploy a stateful app](#part-4-deploy-a-stateful-app)
-	- [4.1 - Start up the Redis Master](#41-start-up-the-redis-master)
-		- [4.1.1 - Creating the Redis Master Deployment](#411-creating-the-redis-master-deployment)
-		- [4.1.2 - Creating the *Redis Master Service*](#412-creating-the-redis-master-service)
-	- [4.2 - Start up the Redis Slaves](#42-start-up-the-redis-slaves)
-		- [4.2.1 - Creating the *Redis Slave Deployment*](#421-creating-the-redis-slave-deployment)
-		- [4.2.2 - Creating the Redis Slave Service](#422-creating-the-redis-slave-service)
-	- [4.3 - Set up and Expose the Guestbook Frontend](#43-set-up-and-expose-the-guestbook-frontend)
-		- [4.3.1 - Creating the Guestbook Frontend Deployment](#431-creating-the-guestbook-frontend-deployment)
-		- [4.3.2 - Creating the frontend _Service_](#432-creating-the-frontend-service)
-		- [4.3.3 - Viewing the Frontend Service via NodePort](#433-viewing-the-frontend-service-via-nodeport)
-	- [4.4 - Scale the Web Frontend](#44-scale-the-web-frontend)
-	- [4.5 - Testing the resilience](#45-testing-the-resilience)
-		- [4.5.1 - Let's kill a Redis Slave _pod_](#451-lets-kill-a-redis-slave-pod)
-		- [4.5.2 - Let's kill a Frontend _Pod_](#452-lets-kill-a-frontend-pod)
-		- [4.5.3 - Let's kill the Redis Master _Pod_](#453-lets-kill-the-redis-master-pod)
-		- [4.5.4 - Let's kill a _Node_](#454-lets-kill-a-node)
-		- [4.5.5 - Let's kill the Redis Master _Node_](#455-lets-kill-the-redis-master-node)
-	- [4.6 - Cleaning up](#46-cleaning-up)
-	- [4.7 - Conclusion](#47-conclusion)
-
-<!-- /TOC -->
-
 
 In this section, you will build and deploy a simple, multi-tier web application - a PHP Guestbook application with Redis - using Kubernetes and Docker. This example consists of the following components:
 
-* a single-instance Redis master to store guestbook entries
-* multiple replicated Redis instances to serve reads
+* a single-instance Redis Master to store guestbook entries
+* multiple replicated Redis Slave instances to serve reads
 * multiple web frontend instances
 
 
