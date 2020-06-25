@@ -3,9 +3,9 @@
 
 ## A - Part 3 - Hello application
 
-In Part 3 of the tutorial, we deploy a very simple app showing a 'Hello world' message and the `ContainerID` of the container in which it runs (it is a simpler version of the app used in the previous docker tutorial, without redis).
+In Part 3 of the tutorial, we deploy a very simple python web application displaying a 'Hello world' message and the `ContainerID` of the container in which it runs. We actually use two versions of the application in order to demonstrate how Kubernetes manages the lifecycle of applications.
 
-We will show here how to build it, knowing that all necessary resources are the python script, the requirements and the `Dockerfile`: they all are in the `./app-part3/v1` and `./app-part3/v2`  sub-directory. Let's build the two versions of the app, and upload the containers in DockerHub, so that we can use it later in the tutorial (for more details on the step-by-step process, you can refer to the **learn docker** tutorial).
+We will show here how to build the corresponding docker images, knowing that all necessary resources are the python script `app-part3-vX.py`, the requirements file `requirements.txt` and the `Dockerfile`: they all are in the `./app-part3/v1` and `./app-part3/v2` sub-directories. Let's build the two versions of the applications, and upload the containers in DockerHub, so that we can use it later in the tutorial (for more details on the step-by-step process, you can refer to the **learn docker** tutorial).
 
 ```bash
 tuto@laptop:$~/learn-kubernetes$ docker login
@@ -94,7 +94,66 @@ tuto@laptop:$~/learn-kubernetes/app-part3/v2$ curl http://localhost:4000
 
 ## B - Part 4 - Hello application with a persistent counter
 
+In Part 4 of the tutorial, we deploy a slightly more complex python web application than in Part 3: it displays a 'Hello world' message, the `ContainerID` of the container in which it runs, and a increments a counter each time the web page is visited (one single counter shared across all the instances of the application). The counter is stored in a Redis database, hosted on a Redis backend service shared by all the web frontend instances.
 
+We will show here how to build the corresponding docker image, knowing that all necessary resources are the python script `app-part4.py`, the requirements file `requirements.txt` and the `Dockerfile`: they all are in the `./app-part4` sub-directory. Let's build the application image, and upload the container in DockerHub, so that we can use it later in the tutorial.
 
+```bash
+tuto@laptop:$~/learn-kubernetes$ docker login
+Username: tsouche
+Password:
+Login Succeeded
 
-This is how the Docker images were built, available to be used in this tutorial.
+tuto@laptop:$~/learn-kubernetes$ cd app-part4
+
+tuto@laptop:$~/learn-kubernetes/app-part4$ ls
+app-part4.py  frontend-deployment.yaml  redis-master-deployment.yaml  redis-slave-deployment.yaml  requirements.txt
+Dockerfile    frontend-service.yaml     redis-master-service.yaml     redis-slave-service.yaml
+
+tuto@laptop:$~/learn-kubernetes/app-part4$ docker build -t app-part4 .
+Sending build context to Docker daemon  13.82kB
+Step 1/7 : FROM python:3.6
+ ---> 2dfb6d103623
+[...]
+Successfully tagged app-part4:latest
+
+tuto@laptop:$~/learn-kubernetes/app-part4$ docker tag app-part4 tsouche/learn-kubernetes:part4
+
+tuto@laptop:$~/learn-kubernetes/app-part4$ docker image ls
+REPOSITORY                 TAG                 IMAGE ID            CREATED              SIZE
+app-part4                  latest              e25c69106779        About a minute ago   924MB
+tsouche/learn-kubernetes   part4               e25c69106779        About a minute ago   924MB
+python                     3.6                 2dfb6d103623        5 weeks ago          914MB
+
+tuto@laptop:$~/learn-kubernetes/app-part4$ docker push tsouche/learn-kubernetes:part4
+The push refers to repository [docker.io/tsouche/learn-kubernetes]
+a34c64c699f5: Pushed
+a1408f25b712: Pushed
+6a5fb16af72b: Layer already exists
+aaeecd3bafff: Layer already exists
+4ecefce7ec49: Layer already exists
+3125d8e4d0be: Layer already exists
+ca5c6919ea52: Layer already exists
+8c39f7b1a31a: Layer already exists
+88cfc2fcd059: Layer already exists
+760e8d95cf58: Layer already exists
+7cc1c2d7e744: Layer already exists
+8c02234b8605: Layer already exists
+part4: digest: sha256:71d31e3ac9133622fc31b3efec48d913bed03217aa067765f17e815e0e991642 size: 2844
+```
+
+Here it is: the image is uploaded to DockerHub and we can now test it locally (i.e. not running on the Kubernetes cluster, but simply running on a local docker container):
+
+```bash
+tuto@laptop:$~/learn-kubernetes/app-part4$ docker run -d -p 4000:80 tsouche/learn-kubernetes:part4
+88403532e44c60dfba280cce3d596e4018d36041f9290c0ae08e7dd98441aec5
+```
+
+It is now running, and the web server is listening on the port 4000. Let's probe the URL using `curl`:
+
+```bash
+tuto@laptop:$~/learn-kubernetes/app-part4$ curl http://localhost:4000
+<h3>Hello World!</h3><b>Hostname:</b> 88403532e44c<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+```
+
+Here we are: the container is published on Docker Hub, and the application is running, displaying the 'Hello World' message, the ID of the container in which it runs and indicating that the Redis database is not accessible (which is normal because we did not isntantiate the Redis service).
