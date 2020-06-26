@@ -75,8 +75,8 @@ At this moment in time, there is no application running on the Kubernetes cluste
 Let’s deploy this first app on Kubernetes with the `kubectl create deployment` command. We need to provide the deployment name and app image location (include the full repository url if the container images are hosted outside Docker hub):
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl create deployment hello --image=tsouche/learn-kubernetes:part3
-deployment.apps/hello created
+tuto@laptop:~/learn-kubernetes$ kubectl create deployment hello-part3 --image=tsouche/learn-kubernetes:part3v1
+deployment.apps/hello-part3 created
 ```
 It takes few seconds for the application to be deployed: the *Dashboard* will first show an intermediate state :
 
@@ -88,12 +88,12 @@ And then you can see the Deployment live:
 
 ![alt txt](./images/tuto-3-dashboard-deployment-pods.png "The application is live!!!")
 
-***Great!*** You just deployed your first application by creating a deployment! You can also see that it created a Pod called `hello-549897755f-gw997` as it is visible on the *Dashboard*. Now it hte time to get the same information in the terminal, using `kubectl` instead of the *Dashboard*: we will ask `kubectl` to look for all the _Pods_ on the cluster:
+***Great!*** You just deployed your first application by creating a deployment! You can also see that it created a Pod called ` hello-part3-5849fddfff-sqp49` as it is visible on the *Dashboard*. Now it hte time to get the same information in the terminal, using `kubectl` instead of the *Dashboard*: we will ask `kubectl` to look for all the _Pods_ on the cluster:
 
 ```bash
 tuto@laptop:/projects/kind$ kubectl get pods
-NAME                     READY   STATUS    RESTARTS   AGE
-hello-549897755f-gw997   1/1     Running   0          4m50s
+NAME                           READY   STATUS    RESTARTS   AGE
+hello-part3-5849fddfff-sqp49   1/1     Running   0          5m11s
 ```
 
 In few seconds, the application is deployed. :smile:
@@ -111,8 +111,8 @@ To list your deployments use the `kubectl get deployments` command:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get deployments
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   1/1     1            1           9m15s
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+hello-part3   1/1     1            1           6m36s
 ```
 
 Let's details this line since you will see later in the tutorial many results
@@ -121,12 +121,12 @@ similar to this one:
 * The `1 UP-TO-DATE` means that the one active is of the right version: there is consequently no need for Kubernetes to update the Pod with a fresher version.
 * The `1 AVAILABLE` means that 1 instance of the Pod is actually available to the end-users (and there could be many reasons for which the Pod would not be available: for instance, the network could be down for a part of the cluster, thus the corresponding _Node_ would be isolated, and Kubernetes would have to spawn a new instance of the Pod on another _Node_ with good connectivity, in order to secure that the end-users keep having 1 instance truely available to them).
 
-We can see here that there is 1 deployment, running 1 single instance of your app. The instance is running inside a Docker container on one of the _Nodes_. To get more details, we expand the results of the `kubectl get pods` command: we can see that this Pod is running on the worker 3.
+We can see here that there is 1 deployment, running 1 single instance of your app. The instance is running inside a Docker container on one of the _Nodes_. To get more details, we expand the results of the `kubectl get pods` command: we can see that this Pod is running on the worker 2.
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
-hello-549897755f-gw997   1/1     Running   0          9m25s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+NAME                           READY   STATUS    RESTARTS   AGE    IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5849fddfff-sqp49   1/1     Running   0          7m6s   10.244.2.2   k8s-tuto-worker2   <none>           <none>
 ```
 
 
@@ -177,7 +177,7 @@ The API server will automatically create an endpoint for each pod, based on the 
 tuto@laptop:~/learn-kubernetes$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
 
 tuto@laptop:~/learn-kubernetes$ echo $POD_NAME
-hello-549897755f-gw997
+hello-part3-5849fddfff-sqp49
 ```
 Done: this will be useful later in the tutorial.
 
@@ -214,37 +214,37 @@ Containers should only be scheduled together in a single Pod if they are tightly
 
 ### 3.4.3 - Check the application configuration
 
-We already have checked the _Pods_ with `kubectl`, so we know that a `hello` _Pod_ runs on the `worker 3`. Now, let's view what containers are inside that _Pod_ and what images are used to build those containers. To do so, we run the `kubectl describe pods` command:
+We already have checked the _Pods_ with `kubectl`, so we know that a `hello` _Pod_ runs on the `worker 2`. Now, let's view what containers are inside that _Pod_ and what images are used to build those containers. To do so, we run the `kubectl describe pods` command:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl describe pods
-Name:         hello-549897755f-gw997
+Name:         hello-part3-5849fddfff-sqp49
 Namespace:    default
 Priority:     0
-Node:         k8s-tuto-worker3/172.18.0.2
-Start Time:   Sun, 14 Jun 2020 17:55:54 +0200
-Labels:       app=hello
-              pod-template-hash=549897755f
+Node:         k8s-tuto-worker2/172.18.0.4
+Start Time:   Fri, 26 Jun 2020 22:13:58 +0200
+Labels:       app=hello-part3
+              pod-template-hash=5849fddfff
 Annotations:  <none>
 Status:       Running
-IP:           10.244.1.2
+IP:           10.244.2.2
 IPs:
-  IP:           10.244.1.2
-Controlled By:  ReplicaSet/hello-549897755f
+  IP:           10.244.2.2
+Controlled By:  ReplicaSet/hello-part3-5849fddfff
 Containers:
   learn-kubernetes:
-    Container ID:   containerd://18cffce73786e10fabdbdfab60b729877a1e66aa182a0a69f37bb6db0bd0cb32
-    Image:          tsouche/learn-kubernetes:part3
-    Image ID:       docker.io/tsouche/learn-kubernetes@sha256:ba5e8b3f6868f7e3753d53227a1ec7032f1c9fb5749b54d147ae3729f11f170c
+    Container ID:   containerd://53e980e2669582d47a3fb4e1c433e0db5509c44b9df0412ca3c55222e6d7473c
+    Image:          tsouche/learn-kubernetes:part3v1
+    Image ID:       docker.io/tsouche/learn-kubernetes@sha256:c431a4859e82a37660719793a8f745ca116ea3c4c4445f554cb68f99b1e6e786
     Port:           <none>
     Host Port:      <none>
     State:          Running
-      Started:      Sun, 14 Jun 2020 17:56:13 +0200
+      Started:      Fri, 26 Jun 2020 22:14:21 +0200
     Ready:          True
     Restart Count:  0
     Environment:    <none>
     Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from default-token-zhzb7 (ro)
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-5w9jd (ro)
 Conditions:
   Type              Status
   Initialized       True
@@ -252,15 +252,22 @@ Conditions:
   ContainersReady   True
   PodScheduled      True
 Volumes:
-  default-token-zhzb7:
+  default-token-5w9jd:
     Type:        Secret (a volume populated by a Secret)
-    SecretName:  default-token-zhzb7
+    SecretName:  default-token-5w9jd
     Optional:    false
 QoS Class:       BestEffort
 Node-Selectors:  <none>
 Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
                  node.kubernetes.io/unreachable:NoExecute for 300s
-Events:          <none>
+Events:
+  Type    Reason     Age    From                       Message
+  ----    ------     ----   ----                       -------
+  Normal  Scheduled  8m54s  default-scheduler          Successfully assigned default/hello-part3-5849fddfff-sqp49 to k8s-tuto-worker2
+  Normal  Pulling    8m53s  kubelet, k8s-tuto-worker2  Pulling image "tsouche/learn-kubernetes:part3v1"
+  Normal  Pulled     8m35s  kubelet, k8s-tuto-worker2  Successfully pulled image "tsouche/learn-kubernetes:part3v1"
+  Normal  Created    8m31s  kubelet, k8s-tuto-worker2  Created container learn-kubernetes
+  Normal  Started    8m31s  kubelet, k8s-tuto-worker2  Started container learn-kubernetes
 ```
 
 Whaou... :dizzy_face:  Plenty of information is available, as you can see: IP address, the ports used and a list of events related to the lifecycle of the _Pod_.
@@ -281,35 +288,35 @@ To see the output of our application, run a `curl` request.
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get namespace
 NAME                   STATUS   AGE
-default                Active   5h39m
-kube-node-lease        Active   5h39m
-kube-public            Active   5h39m
-kube-system            Active   5h39m
-kubernetes-dashboard   Active   5h38m
-local-path-storage     Active   5h39m
+default                Active   13m
+kube-node-lease        Active   13m
+kube-public            Active   13m
+kube-system            Active   13m
+kubernetes-dashboard   Active   13m
+local-path-storage     Active   13m
 
 tuto@laptop:~/learn-kubernetes$ curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/
 {
   "kind": "Pod",
   "apiVersion": "v1",
   "metadata": {
-    "name": "hello-549897755f-gw997",
-    "generateName": "hello-549897755f-",
+    "name": "hello-part3-5849fddfff-sqp49",
+    "generateName": "hello-part3-5849fddfff-",
     "namespace": "default",
-    "selfLink": "/api/v1/namespaces/default/pods/hello-549897755f-gw997",
-    "uid": "89cb6c86-68e2-4444-bc86-fc2a60e120de",
-    "resourceVersion": "27321",
-    "creationTimestamp": "2020-06-14T15:55:54Z",
+    "selfLink": "/api/v1/namespaces/default/pods/hello-part3-5849fddfff-sqp49",
+    "uid": "34ef4724-c155-4b0c-835e-444fbdac174d",
+    "resourceVersion": "1437",
+    "creationTimestamp": "2020-06-26T20:13:58Z",
     "labels": {
-      "app": "hello",
-      "pod-template-hash": "549897755f"
+      "app": "hello-part3",
+      "pod-template-hash": "5849fddfff"
     },
     "ownerReferences": [
       {
         "apiVersion": "apps/v1",
         "kind": "ReplicaSet",
-        "name": "hello-549897755f",
-        "uid": "6bc5f6da-7e84-49ab-a891-1777ef0ce7a8",
+        "name": "hello-part3-5849fddfff",
+        "uid": "cd4aca5c-e4bb-4c6e-912b-8aca2d78d2a4",
         "controller": true,
         "blockOwnerDeletion": true
       }
@@ -319,26 +326,26 @@ tuto@laptop:~/learn-kubernetes$ curl http://localhost:8001/api/v1/namespaces/def
         "manager": "kube-controller-manager",
         "operation": "Update",
         "apiVersion": "v1",
-        "time": "2020-06-14T15:55:54Z",
+        "time": "2020-06-26T20:13:58Z",
         "fieldsType": "FieldsV1",
-        "fieldsV1": {"f:metadata":{"f:generateName":{},"f:labels":{".":{},"f:app":{},"f:pod-template-hash":{}},"f:ownerReferences":{".":{},"k:{\"uid\":\"6bc5f6da-7e84-49ab-a891-1777ef0ce7a8\"}":{".":{},"f:apiVersion":{},"f:blockOwnerDeletion":{},"f:controller":{},"f:kind":{},"f:name":{},"f:uid":{}}}},"f:spec":{"f:containers":{"k:{\"name\":\"learn-kubernetes\"}":{".":{},"f:image":{},"f:imagePullPolicy":{},"f:name":{},"f:resources":{},"f:terminationMessagePath":{},"f:terminationMessagePolicy":{}}},"f:dnsPolicy":{},"f:enableServiceLinks":{},"f:restartPolicy":{},"f:schedulerName":{},"f:securityContext":{},"f:terminationGracePeriodSeconds":{}}}
+        "fieldsV1": {"f:metadata":{"f:generateName":{},"f:labels":{".":{},"f:app":{},"f:pod-template-hash":{}},"f:ownerReferences":{".":{},"k:{\"uid\":\"cd4aca5c-e4bb-4c6e-912b-8aca2d78d2a4\"}":{".":{},"f:apiVersion":{},"f:blockOwnerDeletion":{},"f:controller":{},"f:kind":{},"f:name":{},"f:uid":{}}}},"f:spec":{"f:containers":{"k:{\"name\":\"learn-kubernetes\"}":{".":{},"f:image":{},"f:imagePullPolicy":{},"f:name":{},"f:resources":{},"f:terminationMessagePath":{},"f:terminationMessagePolicy":{}}},"f:dnsPolicy":{},"f:enableServiceLinks":{},"f:restartPolicy":{},"f:schedulerName":{},"f:securityContext":{},"f:terminationGracePeriodSeconds":{}}}
       },
       {
         "manager": "kubelet",
         "operation": "Update",
         "apiVersion": "v1",
-        "time": "2020-06-14T15:56:14Z",
+        "time": "2020-06-26T20:14:21Z",
         "fieldsType": "FieldsV1",
-        "fieldsV1": {"f:status":{"f:conditions":{"k:{\"type\":\"ContainersReady\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}},"k:{\"type\":\"Initialized\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}},"k:{\"type\":\"Ready\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}}},"f:containerStatuses":{},"f:hostIP":{},"f:phase":{},"f:podIP":{},"f:podIPs":{".":{},"k:{\"ip\":\"10.244.1.2\"}":{".":{},"f:ip":{}}},"f:startTime":{}}}
+        "fieldsV1": {"f:status":{"f:conditions":{"k:{\"type\":\"ContainersReady\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}},"k:{\"type\":\"Initialized\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}},"k:{\"type\":\"Ready\"}":{".":{},"f:lastProbeTime":{},"f:lastTransitionTime":{},"f:status":{},"f:type":{}}},"f:containerStatuses":{},"f:hostIP":{},"f:phase":{},"f:podIP":{},"f:podIPs":{".":{},"k:{\"ip\":\"10.244.2.2\"}":{".":{},"f:ip":{}}},"f:startTime":{}}}
       }
     ]
   },
   "spec": {
     "volumes": [
       {
-        "name": "default-token-zhzb7",
+        "name": "default-token-5w9jd",
         "secret": {
-          "secretName": "default-token-zhzb7",
+          "secretName": "default-token-5w9jd",
           "defaultMode": 420
         }
       }
@@ -346,13 +353,13 @@ tuto@laptop:~/learn-kubernetes$ curl http://localhost:8001/api/v1/namespaces/def
     "containers": [
       {
         "name": "learn-kubernetes",
-        "image": "tsouche/learn-kubernetes:part3",
+        "image": "tsouche/learn-kubernetes:part3v1",
         "resources": {
 
         },
         "volumeMounts": [
           {
-            "name": "default-token-zhzb7",
+            "name": "default-token-5w9jd",
             "readOnly": true,
             "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount"
           }
@@ -367,7 +374,7 @@ tuto@laptop:~/learn-kubernetes$ curl http://localhost:8001/api/v1/namespaces/def
     "dnsPolicy": "ClusterFirst",
     "serviceAccountName": "default",
     "serviceAccount": "default",
-    "nodeName": "k8s-tuto-worker3",
+    "nodeName": "k8s-tuto-worker2",
     "securityContext": {
 
     },
@@ -396,41 +403,41 @@ tuto@laptop:~/learn-kubernetes$ curl http://localhost:8001/api/v1/namespaces/def
         "type": "Initialized",
         "status": "True",
         "lastProbeTime": null,
-        "lastTransitionTime": "2020-06-14T15:55:54Z"
+        "lastTransitionTime": "2020-06-26T20:13:58Z"
       },
       {
         "type": "Ready",
         "status": "True",
         "lastProbeTime": null,
-        "lastTransitionTime": "2020-06-14T15:56:14Z"
+        "lastTransitionTime": "2020-06-26T20:14:21Z"
       },
       {
         "type": "ContainersReady",
         "status": "True",
         "lastProbeTime": null,
-        "lastTransitionTime": "2020-06-14T15:56:14Z"
+        "lastTransitionTime": "2020-06-26T20:14:21Z"
       },
       {
-        "type": "PodsScheduled",
+        "type": "PodScheduled",
         "status": "True",
         "lastProbeTime": null,
-        "lastTransitionTime": "2020-06-14T15:55:54Z"
+        "lastTransitionTime": "2020-06-26T20:13:58Z"
       }
     ],
-    "hostIP": "172.18.0.2",
-    "podIP": "10.244.1.2",
+    "hostIP": "172.18.0.4",
+    "podIP": "10.244.2.2",
     "podIPs": [
       {
-        "ip": "10.244.1.2"
+        "ip": "10.244.2.2"
       }
     ],
-    "startTime": "2020-06-14T15:55:54Z",
+    "startTime": "2020-06-26T20:13:58Z",
     "containerStatuses": [
       {
         "name": "learn-kubernetes",
         "state": {
           "running": {
-            "startedAt": "2020-06-14T15:56:13Z"
+            "startedAt": "2020-06-26T20:14:21Z"
           }
         },
         "lastState": {
@@ -438,9 +445,9 @@ tuto@laptop:~/learn-kubernetes$ curl http://localhost:8001/api/v1/namespaces/def
         },
         "ready": true,
         "restartCount": 0,
-        "image": "docker.io/tsouche/learn-kubernetes:part3",
-        "imageID": "docker.io/tsouche/learn-kubernetes@sha256:ba5e8b3f6868f7e3753d53227a1ec7032f1c9fb5749b54d147ae3729f11f170c",
-        "containerID": "containerd://18cffce73786e10fabdbdfab60b729877a1e66aa182a0a69f37bb6db0bd0cb32",
+        "image": "docker.io/tsouche/learn-kubernetes:part3v1",
+        "imageID": "docker.io/tsouche/learn-kubernetes@sha256:c431a4859e82a37660719793a8f745ca116ea3c4c4445f554cb68f99b1e6e786",
+        "containerID": "containerd://53e980e2669582d47a3fb4e1c433e0db5509c44b9df0412ca3c55222e6d7473c",
         "started": true
       }
     ],
@@ -468,12 +475,12 @@ Anything that the application would normally send to `STDOUT` becomes logs for t
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl logs $POD_NAME
- * Serving Flask app "app" (lazy loading)
- * Environment: production
-   WARNING: This is a development server. Do not use it in a production deployment.
-   Use a production WSGI server instead.
- * Debug mode: off
- * Running on http://0.0.0.0:80/ (Press CTRL+C to quit)
+* Serving Flask app "app-part3-v1" (lazy loading)
+* Environment: production
+  WARNING: This is a development server. Do not use it in a production deployment.
+  Use a production WSGI server instead.
+* Debug mode: off
+* Running on http://0.0.0.0:80/ (Press CTRL+C to quit)
 ```
 
 We can see everything that the application sent to `stdout`, because we have not set a proper `syslog` in the app or in the container. Obviously, in a real environment, the logs would be sent towards a syslog agent, and Kubernetes would then manage the redirection of the logs to the log management system (outside Kubernetes).
@@ -488,22 +495,22 @@ So let’s list the environment variables as they exist within the container:
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl exec $POD_NAME -- env
 PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-HOSTNAME=hello-549897755f-gw997
+HOSTNAME=hello-part3-5849fddfff-sqp49
 LANG=C.UTF-8
 GPG_KEY=0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D
-PYTHON_VERSION=3.6.9
-PYTHON_PIP_VERSION=19.3.1
-PYTHON_GET_PIP_URL=https://github.com/pypa/get-pip/raw/ffe826207a010164265d9cc807978e3604d18ca0/get-pip.py
-PYTHON_GET_PIP_SHA256=b86f36cc4345ae87bfd4f10ef6b2dbfa7a872fbff70608a1e43944d283fd0eee
+PYTHON_VERSION=3.6.10
+PYTHON_PIP_VERSION=20.1.1
+PYTHON_GET_PIP_URL=https://github.com/pypa/get-pip/raw/eff16c878c7fd6b688b9b4c4267695cf1a0bf01b/get-pip.py
+PYTHON_GET_PIP_SHA256=b3153ec0cf7b7bbf9556932aa37e4981c35dc2a2c501d70d91d2795aa532be79
 NAME=World
-KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
-KUBERNETES_SERVICE_HOST=10.96.0.1
-KUBERNETES_SERVICE_PORT=443
 KUBERNETES_SERVICE_PORT_HTTPS=443
 KUBERNETES_PORT=tcp://10.96.0.1:443
 KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
 KUBERNETES_PORT_443_TCP_PROTO=tcp
 KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
+KUBERNETES_SERVICE_HOST=10.96.0.1
+KUBERNETES_SERVICE_PORT=443
 HOME=/root
 ```
 
@@ -513,44 +520,46 @@ Next let’s start a bash session in the _Pod’s_ container:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl exec -ti $POD_NAME -- bash
-root@hello-549897755f-gw997:/app#
+root@hello-part3-5849fddfff-sqp49:/app#
 ```
 
-We have now an open console on the container where we run our Python application, and we are logged as root. The source code of the app is in the `/app/app.py` file:
+We have now an open console on the container where we run our Python application, and we are logged as root. The source code of the app is in the `/app/app-part3-v1.py` file:
 
 ```python
-root@hello-549897755f-gw997:/app# cat app.py
+root@hello-part3-5849fddfff-sqp49:/app# ls
+Dockerfile  app-part3-v1.py  requirements.txt
+
+root@hello-part3-5849fddfff-sqp49:/app# cat app-part3-v1.py
 from flask import Flask
 import os
 import socket
+
 
 app = Flask(__name__)
 
 @app.route("/")
 def hello():
-    html = "<h3>Hello {name}!</h3>" \
+    html = "<h3>Hello {name}! - application version 1</h3>" \
            "<b>Hostname:</b> {hostname}<br/>"
-    return html.format(name=os.getenv("NAME", "world"), \
-           hostname=socket.gethostname())
+    return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=80)
+    app.run(host='0.0.0.0', port=80)
 ```
 
 You can check that the application is up by running a `curl` command:
 
 ```bash
 root@hello-549897755f-gw997:/app# curl localhost:80
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
-root@hello-549897755f-gw997:/app#
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-sqp49<br/>
 ```
 
-> Note: here we used `localhost:80` because we executed the `curl` command inside the container inside the _Pod_. Outside the container, the port 8001 is exposed. If you cannot connect to localhost:80, check to make sure you have run the `kubectl exec -ti <POD_NAME> -- command` and are launching the command from *within* the _Pod_.
+> Note: here we used `localhost:80` because we executed the `curl` command from inside the container inside the _Pod_. Outside the container, the port 8001 is exposed. If you cannot connect to localhost:80, check to make sure you have run the `kubectl exec -ti <POD_NAME> -- command` and are launching the command from *within* the _Pod_.
 
 To close your container connection type `exit`.
 
 ```bash
-root@hello-5bfc654f49-bvbw5:/app# exit
+root@hello-part3-5849fddfff-sqp49:/app# exit
 exit
 tuto@laptop:~/learn-kubernetes$
 ```
@@ -607,8 +616,8 @@ Let’s verify that our application is running. We’ll use the `kubectl get` co
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get pods
-NAME                     READY   STATUS    RESTARTS   AGE
-hello-549897755f-gw997   1/1     Running   0          8m
+NAME                           READY   STATUS    RESTARTS   AGE
+hello-part3-5849fddfff-sqp49   1/1     Running   0          17m
 ```
 
 Next, let’s list the current _Services_ from our cluster:
@@ -616,42 +625,42 @@ Next, let’s list the current _Services_ from our cluster:
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get services
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
-kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   12m
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   28m
 ```
 
 We have a _Service_ called `kubernetes` that is created by default when the cluster starts. To create a new service and expose it to external traffic, we’ll use the `kubectl expose` command with `NodePort` as parameter.
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl expose deployment/hello --type="NodePort" --port 80
-service/hello exposed
+tuto@laptop:~/learn-kubernetes$ kubectl expose deployment/hello-part3 --type="NodePort" --port 80
+service/hello-part3 exposed
 ```
 
 Let’s run again the `kubectl get services` command:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get services
-NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
-hello        NodePort    10.111.127.82   <none>        80:30985/TCP   28s
-kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP        12m
+NAME          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+hello-part3   NodePort    10.101.247.225   <none>        80:30379/TCP   20s
+kubernetes    ClusterIP   10.96.0.1        <none>        443/TCP        22m
 ```
 
-**Yes!** :smile: We have now a running _Service_ called `hello`. Here we see that the _Service_ received a unique cluster-IP, an internal port and no external-IP (the shared IP of the cluster must be used to access it).
+**Yes!** :smile: We have now a running _Service_ called `hello-part3`. Here we see that the _Service_ received a unique cluster-IP, an internal port and no external-IP (the shared IP of the cluster must be used to access it).
 
 To find out what port was opened externally (by the `NodePort` option), we’ll run the `kubectl describe service` command:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe services/hello
-Name:                     hello
+tuto@laptop:~/learn-kubernetes$ kubectl describe services/hello-part3
+Name:                     hello-part3
 Namespace:                default
-Labels:                   app=hello
+Labels:                   app=hello-part3
 Annotations:              <none>
-Selector:                 app=hello
+Selector:                 app=hello-part3
 Type:                     NodePort
-IP:                       10.111.127.82
+IP:                       10.101.247.225
 Port:                     <unset>  80/TCP
 TargetPort:               80/TCP
-NodePort:                 <unset>  30985/TCP
-Endpoints:                10.244.1.2:80
+NodePort:                 <unset>  30379/TCP
+Endpoints:                10.244.2.2:80
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
@@ -660,7 +669,7 @@ Events:                   <none>
 We ceate an environment variable called `NODE_PORT` that has the value of the Node port assigned:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ export NODE_PORT=30985
+tuto@laptop:~/learn-kubernetes$ export NODE_PORT=30379
 ```
 
 Then we need to identify the external IP which is exposed for the whole cluster: this IP is used as the `endpoint` for the default `kubernetes` service:
@@ -677,23 +686,23 @@ Type:              ClusterIP
 IP:                10.96.0.1
 Port:              https  443/TCP
 TargetPort:        6443/TCP
-Endpoints:         172.18.0.5:6443
+Endpoints:         172.18.0.3:6443
 Session Affinity:  None
 Events:            <none>
 ```
 
-Here we can see the cluster's shared `Endpoint`: `172.18.0.5`.
+Here we can see the cluster's shared `Endpoint`: `172.18.0.3`.
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ export ENDPOINT=172.18.0.5
+tuto@laptop:~/learn-kubernetes$ export ENDPOINT=172.18.0.3
 ```
 
-Now that we have both the ip@ (`172.18.0.5`) and the port (`30985`), we can test
+Now that we have both the ip@ (`172.18.0.3`) and the port (`30379`), we can test
 that the app is exposed outside of the cluster using `curl`:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-sqp49<br/>
 ```
 
 And we get a response from the server: the _Service_ is exposed.
@@ -705,21 +714,21 @@ The _Deployment_ created automatically a _label_ for our _Pod_. With `kubectl de
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl describe deployment
-Name:                   hello
+Name:                   hello-part3
 Namespace:              default
-CreationTimestamp:      Sun, 14 Jun 2020 17:55:54 +0200
-Labels:                 app=hello
+CreationTimestamp:      Fri, 26 Jun 2020 22:13:58 +0200
+Labels:                 app=hello-part3
 Annotations:            deployment.kubernetes.io/revision: 1
-Selector:               app=hello
+Selector:               app=hello-part3
 Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
 StrategyType:           RollingUpdate
 MinReadySeconds:        0
 RollingUpdateStrategy:  25% max unavailable, 25% max surge
 Pod Template:
-  Labels:  app=hello
+  Labels:  app=hello-part3
   Containers:
    learn-kubernetes:
-    Image:        tsouche/learn-kubernetes:part3
+    Image:        tsouche/learn-kubernetes:part3v1
     Port:         <none>
     Host Port:    <none>
     Environment:  <none>
@@ -731,56 +740,51 @@ Conditions:
   Available      True    MinimumReplicasAvailable
   Progressing    True    NewReplicaSetAvailable
 OldReplicaSets:  <none>
-NewReplicaSet:   hello-549897755f (1/1 replicas created)
-Events:          <none>
+NewReplicaSet:   hello-part3-5849fddfff (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  21m   deployment-controller  Scaled up replica set hello-part3-5849fddfff to 1
 ```
 
-As you can see, the _label_ is '`app`' and its value is '`hello`', so it appears as '`app=hello`'. Let’s use this _label_ to query our list of _Pods_. We’ll use the `kubectl get pods` command with `-l` as a parameter, followed by the _label_ values:
+As you can see, the _label_ is '`app`' and its value is '`hello-part3`', so it appears as '`app=hello-part3`'. Let’s use this _label_ to query our list of _Pods_. We’ll use the `kubectl get pods` command with `-l` as a parameter, followed by the _label_ values:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l app=hello
-NAME                     READY   STATUS    RESTARTS   AGE
-hello-549897755f-gw997   1/1     Running   0          11m
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l app=hello-part3
+NAME                           READY   STATUS    RESTARTS   AGE
+hello-part3-5849fddfff-sqp49   1/1     Running   0          21m
 ```
 
 You can do the same to list the existing services:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get services -l app=hello
-NAME    TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
-hello   NodePort   10.111.127.82   <none>        80:30985/TCP   2m59s
-```
-
-Get the name of the _Pod_ and store it in the `POD_NAME` environment variable:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
-tuto@laptop:~/learn-kubernetes$ echo $POD_NAME
-hello-549897755f-gw997
+tuto@laptop:~/learn-kubernetes$ kubectl get services -l app=hello-part3
+NAME          TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+hello-part3   NodePort   10.101.247.225   <none>        80:30379/TCP   4m18s
 ```
 
 To apply a new _label_, we use the `kubectl label` command followed by the object type, object name and the new _label_: we create the _label_ '`version`' and we assign it a value of '`v1`'.
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl label pod $POD_NAME version=v1
-pod/hello-549897755f-gw997 labeled
+pod/hello-part3-5849fddfff-sqp49 labeled
 ```
 
 This will apply a new _label_ to our _Pod_ (we pinned the application version to the _Pod_), and we can check it with the `kubectl describe pod` command:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl describe pods $POD_NAME
-Name:         hello-549897755f-gw997
+Name:         hello-part3-5849fddfff-sqp49
 Namespace:    default
 Priority:     0
-Node:         k8s-tuto-worker3/172.18.0.2
-Start Time:   Sun, 14 Jun 2020 17:55:54 +0200
-Labels:       app=hello
-              pod-template-hash=549897755f
+Node:         k8s-tuto-worker2/172.18.0.4
+Start Time:   Fri, 26 Jun 2020 22:13:58 +0200
+Labels:       app=hello-part3
+              pod-template-hash=5849fddfff
               version=v1
 Annotations:  <none>
 Status:       Running
-IP:           10.244.1.2
+IP:           10.244.2.2
 [...]
 ```
 
@@ -788,8 +792,8 @@ We see here that both '`app`' and '`version`' labels are attached now to our _Po
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -l version=v1
-NAME                     READY   STATUS    RESTARTS   AGE
-hello-549897755f-gw997   1/1     Running   0          13m
+NAME                           READY   STATUS    RESTARTS   AGE
+hello-part3-5849fddfff-sqp49   1/1     Running   0          23m
 ```
 
 ... and we see the _Pod_.
@@ -800,8 +804,8 @@ hello-549897755f-gw997   1/1     Running   0          13m
 To delete _Services_ you can use the `kubectl delete service` command. _Labels_ can be used also here:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl delete service -l app=hello
-service "hello" deleted
+tuto@laptop:~/learn-kubernetes$ kubectl delete service -l app=hello-part3
+service "hello-part3" deleted
 ```
 
 Confirm that the _Service_ is gone:
@@ -809,14 +813,14 @@ Confirm that the _Service_ is gone:
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get services
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
-kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   18m
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   28m
 ```
 
 This confirms that our _Service_ was removed. To confirm that route is not exposed anymore you can `curl` the previously exposed IP and port:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-curl: (7) Failed to connect to 172.18.0.5 port 30985: Connection refused
+curl: (7) Failed to connect to 172.18.0.3 port 30379: Connection refused
 ```
 
 This proves that the app is not reachable anymore from outside of the cluster, but it does NOT imply that the _Pods_ are down: by putting down the _Service_, we only impacted the way the cluster is exposing these _Pods_ to the outside world. But not how they run **within** the cluster.
@@ -825,7 +829,7 @@ You can confirm that the app is still running with a `curl` from inside the _Pod
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl exec -ti $POD_NAME -- curl localhost:80
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-sqp49<br/>
 ```
 
 We see here that the application is up. This is because the _Deployment_ is managing the application. To shut down the application, you would need to delete the _Deployment_ as well.
@@ -833,25 +837,25 @@ We see here that the application is up. This is because the _Deployment_ is mana
 So let's now restart the _Service_ so that we can finish this part of the tutorial:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl expose deployment/hello --type="NodePort" --port 80
-service/hello exposed
+tuto@laptop:~/learn-kubernetes$ kubectl expose deployment/hello-part3 --type="NodePort" --port 80
+service/hello-part3 exposed
 ```
 
 And we need to refresh the `NodePort` value and test that the app is still reachable from within the cluster:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe svc/hello
-Name:                     hello
+tuto@laptop:~/learn-kubernetes$ kubectl describe svc/hello-part3
+Name:                     hello-part3
 Namespace:                default
-Labels:                   app=hello
+Labels:                   app=hello-part3
 Annotations:              <none>
-Selector:                 app=hello
+Selector:                 app=hello-part3
 Type:                     NodePort
-IP:                       10.100.216.34
+IP:                       10.103.200.42
 Port:                     <unset>  80/TCP
 TargetPort:               80/TCP
-NodePort:                 <unset>  32731/TCP
-Endpoints:                10.244.1.2:80
+NodePort:                 <unset>  30558/TCP
+Endpoints:                10.244.2.2:80
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
@@ -860,12 +864,12 @@ Events:                   <none>
 The `NodePort` was renewed, and we must refresh our variable:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ NODE_PORT=32731
+tuto@laptop:~/learn-kubernetes$ export NODE_PORT=30558
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-sqp49<br/>
 ```
 
-We're ready for the next section :-)
+We're ready for the next section :smile: !
 
 
 ## 3.6 - Scale Your App
@@ -893,8 +897,8 @@ To list your _Deployments_ use the `kubectl get deployments` command:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get deployments
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   1/1     1            1           19m
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+hello-part3   1/1     1            1           30m
 ```
 
 This shows:
@@ -907,53 +911,54 @@ This shows:
 Next, let’s scale the _Deployment_ to 4 replicas. We’ll use the `kubectl scale` command, followed by the _Deployment_ type, name and desired number of instances:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl scale deployments/hello --replicas=4
-deployment.apps/hello scaled
+tuto@laptop:~/learn-kubernetes$ kubectl scale deployments/hello-part3 --replicas=4
+deployment.apps/hello-part3 scaled
 ```
 
 To list your Deployments once again, use `kubectl get deployments`:
 
 ```bash
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   1/4     4            1           40m
-tuto@laptop:~/learn-kubernetes$ kubectl get pods
-NAME                     READY   STATUS              RESTARTS   AGE
-hello-549897755f-9rgd6   0/1     ContainerCreating   0          47s
-hello-549897755f-gw997   1/1     Running             0          40m
-hello-549897755f-hc5n9   0/1     ContainerCreating   0          47s
-hello-549897755f-jvk22   0/1     ContainerCreating   0          47s
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+hello-part3   2/4     4            2           31m
 
-tuto@laptop:~/learn-kubernetes$ kubectl get pods
-NAME                     READY   STATUS    RESTARTS   AGE
-hello-549897755f-9rgd6   1/1     Running   0          61s
-hello-549897755f-gw997   1/1     Running   0          28h
-hello-549897755f-hc5n9   1/1     Running   0          61s
-hello-549897755f-jvk22   1/1     Running   0          61s
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
+NAME                           READY   STATUS              RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5849fddfff-5sbgf   0/1     ContainerCreating   0          32s   <none>       k8s-tuto-worker    <none>           <none>
+hello-part3-5849fddfff-lp6lt   0/1     ContainerCreating   0          32s   <none>       k8s-tuto-worker3   <none>           <none>
+hello-part3-5849fddfff-qjb7z   1/1     Running             0          32s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
+hello-part3-5849fddfff-sqp49   1/1     Running             0          31m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
+
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
+NAME                           READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5849fddfff-5sbgf   1/1     Running   0          50s   10.244.3.2   k8s-tuto-worker    <none>           <none>
+hello-part3-5849fddfff-lp6lt   1/1     Running   0          50s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-part3-5849fddfff-qjb7z   1/1     Running   0          50s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
+hello-part3-5849fddfff-sqp49   1/1     Running   0          31m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
 
 tuto@laptop:~/learn-kubernetes$ kubectl get deployments
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   4/4     4            4           41m
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+hello-part3   4/4     4            4           33m
 ```
 
 The change was applied, and we now have 4 _Pods_, with different IP addresses. The change was registered in the _Deployment_ events log. To check that, use the `kubectl describe` command:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe deployments/hello
-Name:                   hello
+tuto@laptop:~/learn-kubernetes$ kubectl describe deployments/hello-part3
+Name:                   hello-part3
 Namespace:              default
-CreationTimestamp:      Sun, 14 Jun 2020 17:55:54 +0200
-Labels:                 app=hello
+CreationTimestamp:      Fri, 26 Jun 2020 22:13:58 +0200
+Labels:                 app=hello-part3
 Annotations:            deployment.kubernetes.io/revision: 1
-Selector:               app=hello
+Selector:               app=hello-part3
 Replicas:               4 desired | 4 updated | 4 total | 4 available | 0 unavailable
 StrategyType:           RollingUpdate
 MinReadySeconds:        0
 RollingUpdateStrategy:  25% max unavailable, 25% max surge
 Pod Template:
-  Labels:  app=hello
+  Labels:  app=hello-part3
   Containers:
    learn-kubernetes:
-    Image:        tsouche/learn-kubernetes:part3
+    Image:        tsouche/learn-kubernetes:part3v1
     Port:         <none>
     Host Port:    <none>
     Environment:  <none>
@@ -965,11 +970,12 @@ Conditions:
   Progressing    True    NewReplicaSetAvailable
   Available      True    MinimumReplicasAvailable
 OldReplicaSets:  <none>
-NewReplicaSet:   hello-549897755f (4/4 replicas created)
+NewReplicaSet:   hello-part3-5849fddfff (4/4 replicas created)
 Events:
   Type    Reason             Age    From                   Message
   ----    ------             ----   ----                   -------
-  Normal  ScalingReplicaSet  8m53s  deployment-controller  Scaled up replica set hello-549897755f to 4
+  Normal  ScalingReplicaSet  33m    deployment-controller  Scaled up replica set hello-part3-5849fddfff to 1
+  Normal  ScalingReplicaSet  2m53s  deployment-controller  Scaled up replica set hello-part3-5849fddfff to 4
 ```
 
 You can also view in the output of this command that there are 4 replicas now. Interestingly, you can also see at the bottom a full history of the _Deployment_, showing how it was set initially at 1 instance, and then scaled up to 4.
@@ -980,18 +986,18 @@ You can also view in the output of this command that there are 4 replicas now. I
 Let’s check that the _Service_ is load-balancing the traffic. To find out the exposed IP and Port we can use the `kubectl describe service` command as we learned in the previous section:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe services/hello
-Name:                     hello
+tuto@laptop:~/learn-kubernetes$ kubectl describe services/hello-part3
+Name:                     hello-part3
 Namespace:                default
-Labels:                   app=hello
+Labels:                   app=hello-part3
 Annotations:              <none>
-Selector:                 app=hello
+Selector:                 app=hello-part3
 Type:                     NodePort
-IP:                       10.100.216.34
+IP:                       10.103.200.42
 Port:                     <unset>  80/TCP
 TargetPort:               80/TCP
-NodePort:                 <unset>  32731/TCP
-Endpoints:                10.244.1.2:80,10.244.2.2:80,10.244.3.3:80 + 1 more...
+NodePort:                 <unset>  30558/TCP
+Endpoints:                10.244.1.2:80,10.244.2.2:80,10.244.2.3:80 + 1 more...
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
@@ -1001,26 +1007,24 @@ The `ENDPOINT` (the one used for the whole cluster, including the kubernetes _Se
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-9rgd6<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-5sbgf<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-9rgd6<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-sqp49<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-sqp49<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-hc5n9<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-sqp49<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-9rgd6<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-lp6lt<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-jvk22<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-lp6lt<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-hc5n9<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-sqp49<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-jvk22<br/>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> hello-549897755f-gw997<br/>
+<h3>Hello World! - application version 1</h3><b>Hostname:</b> hello-part3-5849fddfff-5sbgf<br/>
 ```
 
-We hit a different _Pod_ with every request. This demonstrates that the load-balancing is working.
+We hit a different _Pod_ with every request, as the changing Pod reference indicate. This demonstrates that the load-balancing is working.
 
 
 ### 3.6.4 - Scale Down
@@ -1028,32 +1032,32 @@ We hit a different _Pod_ with every request. This demonstrates that the load-bal
 To scale down the Service to 2 replicas, run again the `kubectl scale` command:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl scale deployments/hello --replicas=2
-deployment.apps/hello scaled
+tuto@laptop:~/learn-kubernetes$ kubectl scale deployments/hello-part3 --replicas=2
+deployment.apps/hello-part3 scaled
 ```
 
 List the Deployments to check if the change was applied with the `kubectl get deployments` command:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get deployments
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   2/2     2            2           29m
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+hello-part3   2/2     2            2           38m
 ```
 
 The number of replicas decreased to 2. List the number of _Pods_:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                     READY   STATUS        RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-549897755f-9rgd6   1/1     Terminating   0          60s   10.244.3.4   k8s-tuto-worker4   <none>           <none>
-hello-549897755f-gw997   1/1     Running       0          28h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
-hello-549897755f-hc5n9   1/1     Running       0          19m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
-hello-549897755f-jvk22   1/1     Terminating   0          60s   10.244.4.4   k8s-tuto-worker    <none>           <none>
+NAME                           READY   STATUS        RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5849fddfff-5sbgf   1/1     Running       0          7m24s   10.244.3.2   k8s-tuto-worker    <none>           <none>
+hello-part3-5849fddfff-lp6lt   1/1     Running       0          7m24s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-part3-5849fddfff-qjb7z   1/1     Terminating   0          7m24s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
+hello-part3-5849fddfff-sqp49   1/1     Terminating   0          38m     10.244.2.2   k8s-tuto-worker2   <none>           <none>
 
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-549897755f-gw997   1/1     Running   0          28h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
-hello-549897755f-hc5n9   1/1     Running   0          19m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
+NAME                           READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5849fddfff-5sbgf   1/1     Running   0          7m51s   10.244.3.2   k8s-tuto-worker    <none>           <none>
+hello-part3-5849fddfff-lp6lt   1/1     Running   0          7m51s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
 ```
 
 This confirms that 2 _Pods_ were terminated.
@@ -1103,63 +1107,66 @@ To list your deployments use the get deployments command:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get deployments
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   2/2     2            2           55m
-```
-
-To list the running _Pods_ use the `kubectl get pods` command:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods
-NAME                     READY   STATUS    RESTARTS   AGE
-hello-549897755f-gw997   1/1     Running   0          55m
-hello-549897755f-hc5n9   1/1     Running   0          34m
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+hello-part3   2/2     2            2           39m
 ```
 
 To view the current image version of the app, run a `kubectl describe` command against the _Pods_ (look at the Image field):
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl describe pods
-Name:         hello-549897755f-gw997
+Name:         hello-part3-5849fddfff-5sbgf
 Namespace:    default
 Priority:     0
-Node:         k8s-tuto-worker3/172.18.0.2
-Start Time:   Sun, 14 Jun 2020 17:55:54 +0200
-Labels:       app=hello
-              pod-template-hash=549897755f
-              version=v1
+Node:         k8s-tuto-worker/172.18.0.2
+Start Time:   Fri, 26 Jun 2020 22:44:48 +0200
+Labels:       app=hello-part3
+              pod-template-hash=5849fddfff
+Annotations:  <none>
+Status:       Running
+IP:           10.244.3.2
+[...]
+Events:
+  Type    Reason     Age    From                      Message
+  ----    ------     ----   ----                      -------
+  Normal  Scheduled  9m23s  default-scheduler         Successfully assigned default/hello-part3-5849fddfff-5sbgf to k8s-tuto-worker
+  Normal  Pulling    9m22s  kubelet, k8s-tuto-worker  Pulling image "tsouche/learn-kubernetes:part3v1"
+  Normal  Pulled     9m2s   kubelet, k8s-tuto-worker  Successfully pulled image "tsouche/learn-kubernetes:part3v1"
+  Normal  Created    8m47s  kubelet, k8s-tuto-worker  Created container learn-kubernetes
+  Normal  Started    8m47s  kubelet, k8s-tuto-worker  Started container learn-kubernetes
+
+
+Name:         hello-part3-5849fddfff-lp6lt
+Namespace:    default
+Priority:     0
+Node:         k8s-tuto-worker3/172.18.0.5
+Start Time:   Fri, 26 Jun 2020 22:44:48 +0200
+Labels:       app=hello-part3
+              pod-template-hash=5849fddfff
 Annotations:  <none>
 Status:       Running
 IP:           10.244.1.2
 [...]
-Events:          <none>
-
-
-Name:         hello-549897755f-hc5n9
-Namespace:    default
-Priority:     0
-Node:         k8s-tuto-worker2/172.18.0.3
-Start Time:   Mon, 15 Jun 2020 22:20:51 +0200
-Labels:       app=hello
-              pod-template-hash=549897755f
-Annotations:  <none>
-Status:       Running
-IP:           10.244.2.2
-[...]
 Events:
-  Type    Reason     Age   From                       Message
-  ----    ------     ----  ----                       -------
-  Normal  Scheduled  35m   default-scheduler          Successfully assigned default/hello-549897755f-hc5n9 to k8s-tuto-worker2
-  Normal  Pulling    35m   kubelet, k8s-tuto-worker2  Pulling image "tsouche/learn-kubernetes:part3"
-  Normal  Pulled     35m   kubelet, k8s-tuto-worker2  Successfully pulled image "tsouche/learn-kubernetes:part3"
-  Normal  Created    34m   kubelet, k8s-tuto-worker2  Created container learn-kubernetes
-  Normal  Started    34m   kubelet, k8s-tuto-worker2  Started container learn-kubernetes
+  Type    Reason     Age    From                       Message
+  ----    ------     ----   ----                       -------
+  Normal  Scheduled  9m23s  default-scheduler          Successfully assigned default/hello-part3-5849fddfff-lp6lt to k8s-tuto-worker3
+  Normal  Pulling    9m22s  kubelet, k8s-tuto-worker3  Pulling image "tsouche/learn-kubernetes:part3v1"
+  Normal  Pulled     9m4s   kubelet, k8s-tuto-worker3  Successfully pulled image "tsouche/learn-kubernetes:part3v1"
+  Normal  Created    8m47s  kubelet, k8s-tuto-worker3  Created container learn-kubernetes
+  Normal  Started    8m47s  kubelet, k8s-tuto-worker3  Started container learn-kubernetes
 ```
 
-To update the image of the application to `version 2`, use the `kubectl set image` command, followed by the deployment name and the new image version:
+To update the image of the application to `version 2`, use the `kubectl set image` command, followed by the deployment name and the new image version. Before that, we list the active _Pods_ and we note their ID's suffix: `5sbgf` and `lp6lt`.
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl set image deployment/hello learn-kubernetes=tsouche/learn-kubernetes:part3v2
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
+kubectl get pods -o wide
+NAME                           READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5849fddfff-5sbgf   1/1     Running   0          11m   10.244.3.2   k8s-tuto-worker    <none>           <none>
+hello-part3-5849fddfff-lp6lt   1/1     Running   0          11m   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+
+tuto@laptop:~/learn-kubernetes$ kubectl set image deployment/hello-part3 learn-kubernetes=tsouche/learn-kubernetes:part3v2
 deployment.apps/hello image updated
 ```
 
@@ -1167,40 +1174,27 @@ The command notified the Deployment to use a different image for your app and in
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-549897755f-gw997   1/1     Running             0          29h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
-hello-549897755f-hc5n9   1/1     Running             0          44m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-t9j68     0/1     ContainerCreating   0          14s   <none>       k8s-tuto-worker    <none>           <none>
+NAME                           READY   STATUS              RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5849fddfff-5sbgf   1/1     Running             0          12m   10.244.3.2   k8s-tuto-worker    <none>           <none>
+hello-part3-5849fddfff-lp6lt   1/1     Running             0          12m   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-part3-6b85bbfbc4-sfc4v   0/1     ContainerCreating   0          3s    <none>       k8s-tuto-worker2   <none>           <none>
 
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                     READY   STATUS              RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-549897755f-gw997   1/1     Running             0          29h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
-hello-549897755f-hc5n9   1/1     Terminating         0          44m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-59hf8     0/1     ContainerCreating   0          8s    <none>       k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-t9j68     1/1     Running             0          29s   10.244.4.5   k8s-tuto-worker    <none>           <none>
+NAME                           READY   STATUS        RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5849fddfff-5sbgf   1/1     Terminating   0          12m   10.244.3.2   k8s-tuto-worker    <none>           <none>
+hello-part3-5849fddfff-lp6lt   1/1     Terminating   0          12m   10.244.1.2   k8s-tuto-worker3   <none>           <none>
+hello-part3-6b85bbfbc4-ptjn5   1/1     Running       0          6s    10.244.1.3   k8s-tuto-worker3   <none>           <none>
+hello-part3-6b85bbfbc4-sfc4v   1/1     Running       0          10s   10.244.2.4   k8s-tuto-worker2   <none>           <none>
 
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                     READY   STATUS        RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-549897755f-gw997   1/1     Terminating   0          29h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
-hello-549897755f-hc5n9   0/1     Terminating   0          44m   10.244.2.2   k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-59hf8     1/1     Running       0          34s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-t9j68     1/1     Running       0          55s   10.244.4.5   k8s-tuto-worker    <none>           <none>
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                     READY   STATUS        RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-549897755f-gw997   1/1     Terminating   0          29h   10.244.1.2   k8s-tuto-worker3   <none>           <none>
-hello-c7f4b66c-59hf8     1/1     Running       0          42s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-t9j68     1/1     Running       0          63s   10.244.4.5   k8s-tuto-worker    <none>           <none>
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                   READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-c7f4b66c-59hf8   1/1     Running   0          61s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-t9j68   1/1     Running   0          82s   10.244.4.5   k8s-tuto-worker    <none>           <none>
+NAME                           READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-6b85bbfbc4-ptjn5   1/1     Running   0          74s   10.244.1.3   k8s-tuto-worker3   <none>           <none>
+hello-part3-6b85bbfbc4-sfc4v   1/1     Running   0          78s   10.244.2.4   k8s-tuto-worker2   <none>           <none>
 ```
 
-Following the progress of the update, you see new _Pods_ being created, and as the update progresses, old _Pods_ being terminated, while the _Deployment Controller_ always keeps (at least) the desired number of _Pods_ active.
+Following the progress of the update, you see new _Pods_ being created (with ID's suffix `ptjn5` and `sfc4v`), and as the update progresses, old _Pods_ being terminated, while the _Deployment Controller_ always keeps (at least) the desired number of _Pods_ active.
 
-Since during a certain transition period both versions are active at the same time, the end users would not all get exactly the same experience: some will still hit the `v1` version, while other will already hit the `v2` version. However, this transition period may be kept reasonably short... if everything happens nominal.
+Since during a certain transition period both versions of the _Pod_ are active at the same time, the end users would not all get exactly the same experience: some will still hit the `v1` version, while other will already hit the `v2` version. However, this transition period may be kept reasonably short... if everything happens nominal.
 
 
 ### 3.7.4 - Verify an update
@@ -1208,18 +1202,18 @@ Since during a certain transition period both versions are active at the same ti
 First, let’s check that the App is running. To find out the exposed IP and Port we can use describe service:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe services/hello
-Name:                     hello
+tuto@laptop:~/learn-kubernetes$ kubectl describe services/hello-part3
+Name:                     hello-part3
 Namespace:                default
-Labels:                   app=hello
+Labels:                   app=hello-part3
 Annotations:              <none>
-Selector:                 app=hello
+Selector:                 app=hello-part3
 Type:                     NodePort
-IP:                       10.100.216.34
+IP:                       10.103.200.42
 Port:                     <unset>  80/TCP
 TargetPort:               80/TCP
-NodePort:                 <unset>  32731/TCP
-Endpoints:                10.244.1.3:80,10.244.1.4:80,10.244.2.3:80 + 5 more...
+NodePort:                 <unset>  30558/TCP
+Endpoints:                10.244.1.3:80,10.244.2.4:80
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
@@ -1229,27 +1223,19 @@ The `NodePort` did not change (since the update took place within the _Service_ 
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-59hf8<br/>
+<h3>Hello World! - application version 2</h3><b>Hostname:</b> hello-part3-6b85bbfbc4-sfc4v<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+<h3>Hello World! - application version 2</h3><b>Hostname:</b> hello-part3-6b85bbfbc4-sfc4v<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-t9j68<br/>
+<h3>Hello World! - application version 2</h3><b>Hostname:</b> hello-part3-6b85bbfbc4-ptjn5<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+<h3>Hello World! - application version 2</h3><b>Hostname:</b> hello-part3-6b85bbfbc4-ptjn5<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+<h3>Hello World! - application version 2</h3><b>Hostname:</b> hello-part3-6b85bbfbc4-sfc4v<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+<h3>Hello World! - application version 2</h3><b>Hostname:</b> hello-part3-6b85bbfbc4-sfc4v<br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-kbvq6<br/>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-nhjl8<br/>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-nhjl8<br/>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-59hf8<br/>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World! - this is version 2</h3><b>Hostname:</b> hello-c7f4b66c-9f5rj<br/>
+<h3>Hello World! - application version 2</h3><b>Hostname:</b> hello-part3-6b85bbfbc4-ptjn5<br/>
 ```
 
 So we can observe that:
@@ -1260,32 +1246,33 @@ So we can observe that:
 The update can be confirmed also by running a rollout status command:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl rollout status deployments/hello
-deployment "hello" successfully rolled out
+tuto@laptop:~/learn-kubernetes$ kubectl rollout status deployments/hello-part3
+deployment "hello-part3" successfully rolled out
 ```
 
 To view the current image version of the app, run a `kubectl describe` command against the _Pods_:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe deployment/hello
-Name:                   hello
+tuto@laptop:~/learn-kubernetes$ kubectl describe deployment/hello-part3
+Name:                   hello-part3
 Namespace:              default
-CreationTimestamp:      Sun, 14 Jun 2020 17:55:54 +0200
-Labels:                 app=hello
+CreationTimestamp:      Fri, 26 Jun 2020 22:13:58 +0200
+Labels:                 app=hello-part3
 Annotations:            deployment.kubernetes.io/revision: 2
-Selector:               app=hello
-Replicas:               4 desired | 4 updated | 4 total | 4 available | 0 unavailable
+Selector:               app=hello-part3
+Replicas:               2 desired | 2 updated | 2 total | 2 available | 0 unavailable
 StrategyType:           RollingUpdate
 MinReadySeconds:        0
 RollingUpdateStrategy:  25% max unavailable, 25% max surge
 Pod Template:
-  Labels:  app=hello
+  Labels:  app=hello-part3
   Containers:
    learn-kubernetes:
     Image:        tsouche/learn-kubernetes:part3v2
     Port:         <none>
     Host Port:    <none>
     Environment:  <none>
+    Mounts:       <none>
 [...]
 ```
 
@@ -1297,26 +1284,26 @@ We run now the version `v2` of the app!
 Let’s perform another update, and deploy image tagged as `v10` :
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl set image deployment/hello learn-kubernetes=tsouche/learn-kubernetes:part3v10
-deployment.apps/hello image updated
+tuto@laptop:~/learn-kubernetes$ kubectl set image deployment/hello-part3 learn-kubernetes=tsouche/learn-kubernetes:part3v10
+deployment.apps/hello-part3 image updated
 ```
 
 Use `kubectl get deployments` to see the status of the _Deployment_:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get deployments
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   2/2     1            2           81m
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+hello-part3   2/2     1            2           52m
 ```
 
-And something is wrong… We do not have the desired number of _Pods_ available. List the _Pods_ again:
+And something is wrong… We do not have the desired number of _Pods_ `UP-TO-DATE`. List the _Pods_ again:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                     READY   STATUS         RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-7bfb444dbb-kpbsv   0/1     ErrImagePull   0          5s    10.244.1.8   k8s-tuto-worker3   <none>           <none>
-hello-c7f4b66c-59hf8     1/1     Running        0          35m   10.244.2.3   k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-t9j68     1/1     Running        0          36m   10.244.4.5   k8s-tuto-worker    <none>           <none>
+NAME                           READY   STATUS         RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-5674f88797-9nkt9   0/1     ErrImagePull   0          12s     10.244.3.3   k8s-tuto-worker    <none>           <none>
+hello-part3-6b85bbfbc4-ptjn5   1/1     Running        0          9m9s    10.244.1.3   k8s-tuto-worker3   <none>           <none>
+hello-part3-6b85bbfbc4-sfc4v   1/1     Running        0          9m13s   10.244.2.4   k8s-tuto-worker2   <none>           <none>
 ```
 
 A describe command on the _Pods_ should give more insights:
@@ -1329,34 +1316,34 @@ The output is, as usual, very verbose, so we isolate only the events associated 
 
 ```bash
 Events:
-  Type     Reason     Age                 From                       Message
-  ----     ------     ----                ----                       -------
-  Normal   Scheduled  2m1s                default-scheduler          Successfully assigned default/hello-7bfb444dbb-kpbsv to k8s-tuto-worker3
-  Normal   Pulling    28s (x4 over 2m1s)  kubelet, k8s-tuto-worker3  Pulling image "tsouche/learn-kubernetes:part3v10"
-  Warning  Failed     26s (x4 over 119s)  kubelet, k8s-tuto-worker3  Failed to pull image "tsouche/learn-kubernetes:part3v10": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/tsouche/learn-kubernetes:part3v10": failed to resolve reference "docker.io/tsouche/learn-kubernetes:part3v10": docker.io/tsouche/learn-kubernetes:part3v10: not found
-  Warning  Failed     26s (x4 over 119s)  kubelet, k8s-tuto-worker3  Error: ErrImagePull
-  Warning  Failed     16s (x6 over 119s)  kubelet, k8s-tuto-worker3  Error: ImagePullBackOff
-  Normal   BackOff    1s (x7 over 119s)   kubelet, k8s-tuto-worker3  Back-off pulling image "tsouche/learn-kubernetes:part3v10"
+  Type     Reason     Age               From                      Message
+  ----     ------     ----              ----                      -------
+  Normal   Scheduled  23s               default-scheduler         Successfully assigned default/hello-part3-5674f88797-9nkt9 to k8s-tuto-worker
+  Normal   BackOff    20s               kubelet, k8s-tuto-worker  Back-off pulling image "tsouche/learn-kubernetes:part3v10"
+  Warning  Failed     20s               kubelet, k8s-tuto-worker  Error: ImagePullBackOff
+  Normal   Pulling    9s (x2 over 23s)  kubelet, k8s-tuto-worker  Pulling image "tsouche/learn-kubernetes:part3v10"
+  Warning  Failed     8s (x2 over 21s)  kubelet, k8s-tuto-worker  Failed to pull image "tsouche/learn-kubernetes:part3v10": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/tsouche/learn-kubernetes:part3v10": failed to resolve reference "docker.io/tsouche/learn-kubernetes:part3v10": docker.io/tsouche/learn-kubernetes:part3v10: not found
+  Warning  Failed     8s (x2 over 21s)  kubelet, k8s-tuto-worker  Error: ErrImagePull
 ```
 
 There is no image tagged `part3v10` in the repository, so Kubernetes is not able to pull the image. Let’s roll back to our previously working version. We’ll use the `kubectl rollout undo` command:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl rollout undo deployments/hello
-deployment.apps/hello rolled back
+tuto@laptop:~/learn-kubernetes$ kubectl rollout undo deployments/hello-part3
+deployment.apps/hello-part3 rolled back
 ```
 
 The rollout command reverted the _Deployment_ to the previous known state (`v2` of the image). Updates are versioned and you can revert to any previously know state of a Deployment. List again the _Pods_:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$kubectl get deployments
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-hello   2/2     2            2           83m
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+hello-part3   2/2     2            2           56m
 
 tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                   READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-hello-c7f4b66c-59hf8   1/1     Running   0          40m   10.244.2.3   k8s-tuto-worker2   <none>           <none>
-hello-c7f4b66c-t9j68   1/1     Running   0          40m   10.244.4.5   k8s-tuto-worker    <none>           <none>
+NAME                           READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part3-6b85bbfbc4-ptjn5   1/1     Running   0          13m   10.244.1.3   k8s-tuto-worker3   <none>           <none>
+hello-part3-6b85bbfbc4-sfc4v   1/1     Running   0          13m   10.244.2.4   k8s-tuto-worker2   <none>           <none>
 ```
 
 Two _Pods_ are running. Check again the image deployed on the them:
@@ -1365,13 +1352,13 @@ Two _Pods_ are running. Check again the image deployed on the them:
 tuto@laptop:~/learn-kubernetes$ kubectl describe pods
 [...]
 Events:
-  Type    Reason     Age   From                      Message
-  ----    ------     ----  ----                      -------
-  Normal  Scheduled  41m   default-scheduler         Successfully assigned default/hello-c7f4b66c-t9j68 to k8s-tuto-worker
-  Normal  Pulling    41m   kubelet, k8s-tuto-worker  Pulling image "tsouche/learn-kubernetes:part3v2"
-  Normal  Pulled     41m   kubelet, k8s-tuto-worker  Successfully pulled image "tsouche/learn-kubernetes:part3v2"
-  Normal  Created    41m   kubelet, k8s-tuto-worker  Created container learn-kubernetes
-  Normal  Started    41m   kubelet, k8s-tuto-worker  Started container learn-kubernetes
+  Type    Reason     Age   From                       Message
+  ----    ------     ----  ----                       -------
+  Normal  Scheduled  13m   default-scheduler          Successfully assigned default/hello-part3-6b85bbfbc4-ptjn5 to k8s-tuto-worker3
+  Normal  Pulling    13m   kubelet, k8s-tuto-worker3  Pulling image "tsouche/learn-kubernetes:part3v2"
+  Normal  Pulled     13m   kubelet, k8s-tuto-worker3  Successfully pulled image "tsouche/learn-kubernetes:part3v2"
+  Normal  Created    13m   kubelet, k8s-tuto-worker3  Created container learn-kubernetes
+  Normal  Started    13m   kubelet, k8s-tuto-worker3  Started container learn-kubernetes
 ```
 
 We see that the _Deployment_ is using a stable version of the `app` (`v2`). The Rollback was successful.
