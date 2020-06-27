@@ -3,15 +3,16 @@ kind: Service
 metadata:
   name: redis-master
   labels:
-    app: redis
-    role: master
+    application: hello-world-part4
     tier: backend
+    component: redis-master
+    role: master
 spec:
   ports:
   - port: 6379
     targetPort: 6379
   selector:
-    app: redis
-    role: master
+    application: hello-world-part4
     tier: backend
-
+    component: redis-master
+    role: master

@@ -22,9 +22,9 @@ In this module, you'll learn the most common `kubectl` commands needed to create
 
 When you create a *Deployment*, you'll need to specify the container image for your application and the number of replicas that you want to run. You can change that information later by updating your *Deployment* (i.e. updating the YAML file and apply it to the *Master* using `kubectl`). Once the application is deployed, sections 3.5 and 3.6 of this tutorial discuss how you can scale and update your *Deployments*.
 
-Applications need to be packaged into one of the supported container formats in order to be deployed on Kubernetes: here we will use **Docker**. For your first Deployment, you'll use a simple Python *"hello worl"* application. The docker image is available from DockerHub under my public repository, with the name `learn-kubernetes` and the tag `part3`: the **Appendix 1** explains how this image is built. The source files are in the `./app-hello` directory:
+Applications need to be packaged into one of the supported container formats in order to be deployed on Kubernetes: here we will use **Docker**. For your first Deployment, you'll use a simple Python *"hello worl"* application. The docker image is available from DockerHub under my public repository, with the name `learn-kubernetes` and the tag `part3`: the **Appendix 1** explains how this image is built. The source files are in the `./app-part3/v1` and `./app-part3/v1` directories. Let' look in the `v1` directory:
 
-File 1: `./app-helo/app.py`
+File 1: `./app-part3/v1/app-part3-v1.py`
 
 ```python
 from flask import Flask
@@ -35,7 +35,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello():
-    html = "<h3>Hello {name}!</h3>" \
+    html = "<h3>Hello {name}!</h3> - application version 1 - " \
            "<b>Hostname:</b> {hostname}<br/>"
     return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
 
@@ -43,12 +43,12 @@ if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80)
 ```
 
-File 2: `./app-helo/requirements.txt`
+File 2: `./app-part3/v1/requirements.txt`
 ```javascript
 Flask
 ```
 
-File 3: `./app-helo/Dockerfile`
+File 3: `./app-part3/v1/Dockerfile`
 ```bash
 # Use an official Python runtime as a parent image
 FROM python:3.6
@@ -63,7 +63,7 @@ EXPOSE 80
 # Define environment variable
 ENV NAME World
 # Run app.py when the container launches
-CMD ["python", "app.py"]
+CMD ["python", "app-part3-v1.py"]
 ```
 
 You can create and manage a _Deployment_ by using the Kubernetes command line interface, `kubectl`. `kubectl` uses the Kubernetes API to interact with the cluster: its role is actually to translate commands which you enter (or more often YAML files containing your instructions) into API calls to the Kubernetes API server. It actually does *nothing*: it only passes your instructions to the *Master* via the API server, the *Master* does the job, and then `kubectl` translates back the *Master*'s answers into a human readable format.
@@ -88,7 +88,7 @@ And then you can see the Deployment live:
 
 ![alt txt](./images/tuto-3-dashboard-deployment-pods.png "The application is live!!!")
 
-***Great!*** You just deployed your first application by creating a deployment! You can also see that it created a Pod called ` hello-part3-5849fddfff-sqp49` as it is visible on the *Dashboard*. Now it hte time to get the same information in the terminal, using `kubectl` instead of the *Dashboard*: we will ask `kubectl` to look for all the _Pods_ on the cluster:
+***Great!*** You just deployed your first application by creating a deployment! You can also see that it created a Pod called ` hello-part3-5849fddfff-sqp49` as it is visible on the *Dashboard*. Now is the time to get the same information in the terminal, using `kubectl` instead of the *Dashboard*: we will ask `kubectl` to look for all the _Pods_ on the cluster:
 
 ```bash
 tuto@laptop:/projects/kind$ kubectl get pods

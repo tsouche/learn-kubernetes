@@ -1,22 +1,316 @@
 # Part 4 - Deploy a stateful app
 
 
-In this section, you will build and deploy a simple, multi-tier web application - a PHP Guestbook application with Redis - using Kubernetes and Docker. This example consists of the following components:
-
-* a single-instance Redis Master to store guestbook entries
-* multiple replicated Redis Slave instances to serve reads
-* multiple web frontend instances
+In this section, you will build and deploy a simple, multi-tier web application: it is an improved version of the *Hello World!* application deployed in Part 3:
+* the web frontend is a python application (very similar to Part 3 application), except that it displays a _'visitors counter'_ which increments each time the web page is visited. We will deploy several instances of this frontend, and the interesting feature is that the visit counter is shared amonst all instances;
+* a single-instance Redis backend, used to store and share the _visitors counter_ which is the only stateful information in our very simple case.
 
 
-## 4.1 - Start up the Redis Master
+## 4.1 - Set up and Expose the Hello-world webserver
 
-The guestbook application uses Redis to store its data. It writes its data to a single Redis Master instance and reads data from multiple Redis Slave instances.
 
-### 4.1.1 - Creating the Redis Master Deployment
+The `hello-world` application is a web frontend writen in python and serving the HTTP requests. It is configured to connect to the _Redis Service_ for reading and incrementing the _visitors counter_.
+
+
+### 4.1.1 - Looking into the new 'Hello-World' application
+
+
+As we saw in Part 3, the new 'hello-world' application which we will use in Part 4 must be packaged into a Docker container: the corresponding image is available from DockerHub under my public repository, with the name `learn-kubernetes` and the tag `part4`: the **Appendix 1** explains how this image is built. The source files are in the `./app-part4` directory:
+
+File 1: `./app-part4/app-part4.py`
+
+```python
+from flask import Flask
+from redis import Redis, RedisError
+import os
+import socket
+
+# Connect to Redis
+redis = Redis(host="redis", db=0, socket_connect_timeout=2, socket_timeout=2)
+
+app = Flask(__name__)
+
+@app.route("/version")
+def version():
+    return "<b>Version 1</b> - <i>bonne année</i>"
+
+@app.route("/")
+def hello():
+    try:
+        visits = redis.incr("counter")
+    except RedisError:
+        visits = "<i>cannot connect to Redis, counter disabled</i>"
+
+    html = "<h3>Hello {name}!</h3>" \
+           "<b>Hostname:</b> {hostname}<br/>" \
+           "<b>Visits:</b> {visits}"
+    return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname(), visits=visits)
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=80)
+```
+
+File 2: `./app-part4/requirements.txt`
+```javascript
+Flask
+Redis
+```
+
+File 3: `./app-part4/Dockerfile`
+```bash
+# Use an official Python runtime as a parent image
+FROM python:3.6
+# Set the working directory to /app
+WORKDIR /app
+# Copy the current directory contents into the container at /app
+ADD . /app
+# Install any needed packages specified in requirements.txt
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+# Make port 80 available to the world outside this container
+EXPOSE 80
+# Define environment variable
+ENV NAME World
+# Run app.py when the container launches
+CMD ["python", "app-part4.py"]
+```
+
+As you can see when looking into the python scrip, the application will show a "Hello World!" message and try to connect to the Redis backend in order to read the visitors counter:
+
+* if the backend is available, then it will display the number of visitors so far, and increment the counter;
+* if the Redis backend is not available, then it will simply indicate it.
+
+
+### 4.1.2 - Creating the "Hello World!" Frontend Deployment
+
+
+In this section of the tutorial, we will use more elaborate YAML files to describe the backend and frontend _Deployments_ and _Services_, not only because they must talk to each others, but also because we will use _labels_ in order to identify the various components of the applications. When looking into the configuration files, you will see the following _labels_:
+
+| `LabelSelector` | `Value` | Explanation |
+| --- | --- | --- |
+| `application` | `hello-world-part4` | This is the name that we give to the **_application_**, which is composed of a **_frontend_** tier and a **_backend_** tier. This label will enable to identify or selct all the resources needed to run  contributing to the **_application_**. |
+| `tier` | `frontend` or `backend` | This label enables to identify / select all the resources needed to run a given **_tier_**: the **_front-_** or the **_back-end_**. In our case, there is only one _Deployment_ and only one _Service_ for each **_tier_**, but you could have built the app with two **_backend components_**: a _Redis Master_ used to serve the write requests (it would still be a SPOF: one single Pod running on one single Node) and a _Redis Slave_ used to serve the read requests, which could run several replicas in order to manage more loads from the multiple **_frontend_** replicas. |
+| `component` | `webserver` or `redis-master` | This _labels_ identify each **_components_**, of which the **_tiers_** are composed. |
+
+
+File: `./app-part4/webserver-deployment.yaml`
+
+```yaml
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: webserver
+  labels:
+    application: hello-world-part4
+    tier: frontend
+    component: webserver
+spec:
+  selector:
+    matchLabels:
+      application: hello-world-part4
+      tier: frontend
+      component: webserver
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        application: hello-world-part4
+        tier: frontend
+        component: webserver
+    spec:
+      containers:
+      - name: app-part4
+        image: tsouche/learn-kubernetes:part4
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+          # Using `GET_HOSTS_FROM=dns` requires your cluster to
+          # provide a dns service. As of Kubernetes 1.3, DNS is a built-in
+          # service launched automatically. However, if the cluster you are using
+          # does not have a built-in DNS service, you can instead
+          # access an environment variable to find the master
+          # service's host. To do so, comment out the 'value: dns' line above, and
+          # uncomment the line below:
+          # value: env
+        ports:
+        - containerPort: 80
+```
+
+Let's apply this file to run the frontend _Deployment_:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/webserver-deployment.yaml
+deployment.apps/webserver created
+```
+
+Query the list of Pods to verify that the 3 frontend replicas are running:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend
+NAME                         READY   STATUS              RESTARTS   AGE
+webserver-74689b446b-fll64   0/1     ContainerCreating   0          19s
+webserver-74689b446b-qhsh8   0/1     ContainerCreating   0          19s
+webserver-74689b446b-wfzrh   0/1     ContainerCreating   0          19s
+
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend
+NAME                         READY   STATUS    RESTARTS   AGE
+webserver-74689b446b-fll64   1/1     Running   0          78s
+webserver-74689b446b-qhsh8   1/1     Running   0          78s
+webserver-74689b446b-wfzrh   1/1     Running   0          78s
+```
+
+We will now use labels in order to identify resources (even though at this stage of the tutorial the only deployed _Pods_ are the `frontend` of the `hello-worl-part4` application), and check that the replicas are well distributed over the _Nodes_ of the cluster:
+
+```bash
+ttuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend -o wide
+NAME                         READY   STATUS    RESTARTS   AGE    IP           NODE               NOMINATED NODE   READINESS GATES
+webserver-74689b446b-fll64   1/1     Running   0          2m3s   10.244.2.2   k8s-tuto-worker3   <none>           <none>
+webserver-74689b446b-qhsh8   1/1     Running   0          2m3s   10.244.3.2   k8s-tuto-worker    <none>           <none>
+webserver-74689b446b-wfzrh   1/1     Running   0          2m3s   10.244.1.2   k8s-tuto-worker2   <none>           <none>
+```
+
+You can see again the importance of well thinking through the use of _labels_: it can be overwelmingly powerful when the time comes to debug complex and seamingly erratic issues in production.
+
+
+### 4.1.2 - Creating the webserver _Service_
+
+Since we want users from outside the cluster to be able to access your web application, we must configure the *webserver Service* to be externally visible: we will expose the _webserver Service_ through `NodePort`.
+
+> Note: Some cloud providers, like Google Compute Engine, support external load balancers. If your cloud provider supports load balancers and you want to use it, simply delete or comment out type: NodePort, and uncomment type: LoadBalancer.
+
+File: `./app-part4/webserver-service.yaml`
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: webserver
+  labels:
+    application: hello-world-part4
+    tier: frontend
+    component: webserver
+spec:
+  # comment or delete the following line if you want to use a LoadBalancer
+  type: NodePort
+  # if your cluster supports it, uncomment the following to automatically create
+  # an external load-balanced IP for the frontend service.
+  # type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    application: hello-world-part4
+    tier: frontend
+    component: webserver
+```
+
+Let's apply this file to run the frontend Service:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/webserver-service.yaml
+service/webserver created
+```
+
+Query the list of _Services_ to verify that the *frontend Service* is running:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl get services
+NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP        6h28m
+webserver    NodePort    10.104.159.200   <none>        80:30045/TCP   8s
+```
+
+Ok, the _webserver Service_ is now up and running: let's try to access it.
+
+### 4.1.3 - Viewing the Webserver Service via NodePort
+
+If you deployed this application to a local cluster, you need to find the IP address to view your web application. As we did in the Part 3, we will use the `kubectl describe` command to collect the details on the `EndPoint` (the IP address which exposes all the `NodePorts` in the cluster) and the `NodePort` for the *frontend Service*:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl describe svc/webserver
+Name:                     webserver
+Namespace:                default
+Labels:                   application=hello-world-part4
+                          component=webserver
+                          tier=frontend
+Annotations:              Selector:  application=hello-world-part4,component=webserver,tier=frontend
+Type:                     NodePort
+IP:                       10.104.159.200
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  30045/TCP
+Endpoints:                10.244.1.2:80,10.244.2.2:80,10.244.3.2:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+```
+
+You now know the `NodePort`: `30045`. Checking the kubernetes Service, you will also get the `EndPoint` which is used to expose all NodePort-type services:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl describe svc/kubernetes
+Name:              kubernetes
+Namespace:         default
+Labels:            component=apiserver
+                   provider=kubernetes
+Annotations:       <none>
+Selector:          <none>
+Type:              ClusterIP
+IP:                10.96.0.1
+Port:              https  443/TCP
+TargetPort:        6443/TCP
+Endpoints:         172.18.0.4:6443
+Session Affinity:  None
+Events:            <none>
+```
+
+Here you are: `172.18.0.4`. You know both the IP and the port used to expose the frontend Service: you can hit into the web server multiple times using `curl` in order to check that the server is up and that the load is balanced over the 3 replicas:
+
+```
+tuto@laptop:~/learn-kubernetes$ export ENDPOINT=172.18.0.4
+tuto@laptop:~/learn-kubernetes$ export NODE_PORT=30045
+
+tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-wfzrh<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-fll64<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-wfzrh<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-qhsh8<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-qhsh8<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
+<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-fll64<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+```
+
+We receive HTML code, which means that the server is well exposed at this URL.And we can confirm that:
+
+* the web server cannot access the Redis service, so the visitors counter is disabled,
+* and the requests are distributed randomly to the 3 replicas.
+
+Since the proxy is still up, you can also view the server on your browser: indicate to the browser your own values for `$ENDPOINT` (in this case: 172.18.0.4) and `$NODE_PORT` (in this case: 30045). It hsould look like this:
+
+![alt txt](./images/tuto-part4-frontend-only.png "Hello world application with no Redis backend")
+
+So everything works so far :smile:. It is time to get teh backend up and running.
+
+
+## 4.2 - Start up the Redis backend
+
+The application uses Redis to store its data. It writes its data to a single Redis Master instance and reads data from multiple Redis Slave instances.
+
+### 4.2.1 - Creating the Redis Deployment
 
 The manifest file, included below, specifies a _Deployment_ controller that runs a single replica _Redis Master Pod_.
 
-File: `./app-guestbook/redis-master-deployment.yaml`
+> Nota: the Redis backend service is called here **Redis Master** because the Redis datastore can be configured in such a way that the write requests are all served to the *Master Service* and that a *Slave Service* would serve all teh read requests. The advantage is that the *Slave Service* can then be replicated over multiple instances and thus be made resilient and scalable. However, the *Master Service* will still be *Single Point of Failure* (SPOF) because it cannot be distributed over multiple replicas: there one single instance of the *Master Service* running on one single _Node_.
+> In this section of the tutorial, we will not implement a _Slave Service_, since resilience is properly addressed in Part 5.
+
+
+File: `./app-part4/redis-master-deployment.yaml`
 
 ```yaml
 apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
@@ -24,20 +318,24 @@ kind: Deployment
 metadata:
   name: redis-master
   labels:
-    app: redis
+    application: hello-world-part4
+    tier: backend
+    component: redis
 spec:
   selector:
     matchLabels:
-      app: redis
-      role: master
+      application: hello-world-part4
       tier: backend
+      component: redis
+      role: master
   replicas: 1
   template:
     metadata:
       labels:
-        app: redis
-        role: master
+        application: hello-world-part4
         tier: backend
+        component: redis
+        role: master
     spec:
       containers:
       - name: master
@@ -50,11 +348,11 @@ spec:
         - containerPort: 6379
 ```
 
-Launch a terminal window in the directory where you downloaded the manifest files. Apply the *Redis Master Deployment* from the `redis-master-deployment.yaml` file:
+Launch a terminal window and apply the *Redis Master Deployment* from the `redis-master-deployment.yaml` file:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/redis-master-deployment.yaml
-kubectl apply -f redis-master-deployment.yaml
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/redis-master-deployment.yaml
+deployment.apps/redis-master created
 ```
 
 Query the list of Pods to verify that the Redis Master Pod is running:
@@ -68,41 +366,26 @@ redis-master-6b54579d85-zrbv2   0/1     ContainerCreating   0          10s   <no
 Run the following command to view the logs from the Redis Master Pod:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ POD_NAME=redis-master-6b54579d85-zrbv2
-tuto@laptop:~/learn-kubernetes$ kubectl logs -f $POD_NAME
-                _._
-           _.-``__ ''-._
-      _.-``    `.  `_.  ''-._           Redis 2.8.19 (00000000/0) 64 bit
-  .-`` .-```.  ```\/    _.,_ ''-._
- (    '      ,       .-`  | `,    )     Running in stand alone mode
- |`-._`-...-` __...-.``-._|'` _.-'|     Port: 6379
- |    `-._   `._    /     _.-'    |     PID: 1
-  `-._    `-._  `-./  _.-'    _.-'
- |`-._`-._    `-.__.-'    _.-'_.-'|
- |    `-._`-._        _.-'_.-'    |           http://redis.io
-  `-._    `-._`-.__.-'_.-'    _.-'
- |`-._`-._    `-.__.-'    _.-'_.-'|
- |    `-._`-._        _.-'_.-'    |
-  `-._    `-._`-.__.-'_.-'    _.-'
-      `-._    `-.__.-'    _.-'
-          `-._        _.-'
-              `-.__.-'
+tuto@laptop:~/learn-kubernetes$ export POD_NAME=redis-master-77df76f8b8-rf28q
+***update the output here ***
 
-[1] 16 Jun 19:19:24.262 # Server started, Redis version 2.8.19
-[1] 16 Jun 19:19:24.262 # WARNING you have Transparent Huge Pages (THP) support enabled in your kernel. This will create latency and memory usage issues with Redis. To fix this issue run the command 'echo never > /sys/kernel/mm/transparent_hugepage/enabled' as root, and add it to your /etc/rc.local in order to retain the setting after a reboot. Redis must be restarted after THP is disabled.
-[1] 16 Jun 19:19:24.262 * The server is now ready to accept connections on port 6379
+tuto@laptop:~/learn-kubernetes$ echo $POD_NAME
+***update the output here ***
+
+tuto@laptop:~/learn-kubernetes$ kubectl logs -f $POD_NAME
+***update the output here ***
 ```
 
 Here we are: the _Pods_ is running and the master DB server has started, it is listening on port 6379.
 
 
-### 4.1.2 - Creating the *Redis Master Service*
+### 4.2.2 - Creating the *Redis Master Service*
 
-The guestbook applications needs to communicate to the Redis master to write its data. You need to apply a _Service_ to proxy the traffic to the _Redis Master Pod_. A `Service` defines a policy to access the _Pods_.
+The web applications needs to communicate to the Redis master to read the visits counter and increment it. You need to apply a _Service_ to proxy the traffic to the _Redis Master Pod_. A `Service` defines a policy to access the _Pods_.
 
 The *Redis Master Service* is defined in the following `redis-master-service.yaml` file:
 
-File: `./app-guestbook/redis-master-service.yaml`
+File: `./app-part4/redis-master-service.yaml`
 
 ```yaml
 apiVersion: v1
@@ -110,38 +393,55 @@ kind: Service
 metadata:
   name: redis-master
   labels:
-    app: redis
-    role: master
+    application: hello-world-part4
     tier: backend
+    component: redis
+    role: master
 spec:
   ports:
   - port: 6379
     targetPort: 6379
   selector:
-    app: redis
-    role: master
+    application: hello-world-part4
     tier: backend
+    component: redis
+    role: master
 ```
 
 Let's set up and run the *Redis Master Service*:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/redis-master-service.yaml
-service/redis-master created
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/redis-master-service.yaml
+***update the output here ***
 ```
 
 Query the list of _Services_ to verify that the *Redis Master Service* is running:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get service
-NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-kubernetes     ClusterIP   10.96.0.1       <none>        443/TCP    2d5h
-redis-master   ClusterIP   10.106.65.211   <none>        6379/TCP   7s
+***update the output here ***
 ```
 
 This manifest file creates a _Service_ named `redis-master` with a set of _labels_ that match the _labels_ previously defined on the _Deployment_, so the _Service_ routes network traffic to the _Redis Master Pod_.
 
 You have here again an example of how important _labels_ are with Kubernetes.
+
+
+
+### 4.1.3 - Label all components of the applications
+
+Our web application is actually composed of several services and deployments, and we will label all the components with `application=hello-part4`:
+
+```bash
+$ kubectl label pod $POD_NAME application=hello-part4
+
+$ kubectl label deployment redis-master application=hello-part4
+
+$ kubectl label service redis-master application=hello-part4
+
+```
+
+Once this is done for all the application components, we will be able to identify or select any resource using the LabelSelector `application` and the value `hello-part4`. If you back at what we did in Part 3, when the application was composed of a frontend service only, we already used
 
 
 ## 4.2 - Start up the Redis Slaves
@@ -259,280 +559,8 @@ redis-master   ClusterIP   10.106.65.211    <none>        6379/TCP   65s
 redis-slave    ClusterIP   10.104.243.238   <none>        6379/TCP   6s
 ```
 
-## 4.3 - Set up and Expose the Guestbook Frontend
-
-The guestbook application has a web frontend serving the HTTP requests written in PHP. It is configured to connect to the _Redis Master Service_ for write requests and the _Redis Slave Service_ for Read requests.
-
-### 4.3.1 - Creating the Guestbook Frontend Deployment
-
-File: `./app-guestbook/frontend-deployment.yaml`
-
-```yaml
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
-Kind: Deployment
-metadata:
-  name: frontend
-    labels:
-      app: guestbook
-spec:
-  selector:
-    matchLabels:
-      app: guestbook
-      tier: frontend
-  replicas: 3
-  template:
-    metadata:
-      labels:
-        app: guestbook
-        tier: frontend
-    spec:
-      containers:
-      - name: php-redis
-      resources:
-        image: gcr.io/google-samples/gb-frontend:v4
-          requests:
-            cpu: 100m
-            memory: 100Mi
-        env:
-       - name: GET_HOSTS_FROM
-         value: dns
-         # Using `GET_HOSTS_FROM=dns` requires your cluster to
-         # provide a dns service. As of Kubernetes 1.3, DNS is a built-in
-         # service launched automatically. However, if the cluster you are using
-         # does not have a built-in DNS service, you can instead
-         # access an environment variable to find the master
-         # service's host. To do so, comment out the 'value: dns' line above, and
-         # uncomment the line below:
-         # value: env
-       ports:
-       - containerPort: 80
-```
-
-Let's apply this file to run the frontend _Deployment_:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/frontend-deployment.yaml
-deployment.apps/frontend created
-```
-
-Query the list of Pods to verify that the 3 frontend replicas are running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l app=guestbook -l tier=frontend -o wide
-NAME                        READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-frontend-56fc5b6b47-8jj2r   1/1     Running   0          8s    10.244.1.3   k8s-tuto-worker3   <none>           <none>
-frontend-56fc5b6b47-dchgw   1/1     Running   0          8s    10.244.3.3   k8s-tuto-worker4   <none>           <none>
-frontend-56fc5b6b47-k8lp7   1/1     Running   0          8s    10.244.4.3   k8s-tuto-worker    <none>           <none>
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l app=guestbook -l tier=backend -o wide
-NAME                            READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
-redis-master-6b54579d85-zrbv2   1/1     Running   0          2m26s   10.244.2.2   k8s-tuto-worker2   <none>           <none>
-redis-slave-799788557c-npxf4    1/1     Running   0          68s     10.244.1.2   k8s-tuto-worker3   <none>           <none>
-redis-slave-799788557c-xt6zf    1/1     Running   0          68s     10.244.2.3   k8s-tuto-worker2   <none>           <none>
-```
-
-You can see again the importance of well thingking through the use of _labels_: it can be overwelmingly powerful when the time comes to debug complex and seamingly erratic issues in production.
 
 
-### 4.3.2 - Creating the frontend _Service_
-
-The _Redis Slave_ and *Redis Master Services* you applied are only accessible within the container cluster because the default type for a _Service_ is `ClusterIP`. `ClusterIP` provides a single IP address for the set of Pods the _Service_ is pointing to. This IP address is accessible only within the cluster.
-
-If you want guests to be able to access your guestbook, you must configure the *frontend Service* to be externally visible, so a client can request the _Service_ from outside the container cluster. We will expose _Services_ through `NodePort`.
-
-> Note: Some cloud providers, like Google Compute Engine or Google Kubernetes Engine, support external load balancers. If your cloud provider supports load balancers and you want to use it, simply delete or comment out type: NodePort, and uncomment type: LoadBalancer.
-
-File: `./app-guestbook/frontend-service.yaml`
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: frontend
-  labels:
-    app: guestbook
-    tier: frontend
-spec:
-  # comment or delete the following line if you want to use a LoadBalancer
-  type: NodePort
-  # if your cluster supports it, uncomment the following to automatically create
-  # an external load-balanced IP for the frontend service.
-  # type: LoadBalancer
-  ports:
-  - port: 80
-  selector:
-    app: guestbook
-    tier: frontend
-```
-
-Let's apply this file to run the frontend Service:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/frontend-service.yaml
-service/frontend created
-```
-
-Query the list of _Services_ to verify that the *frontend Service* is running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get services
-NAME           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
-frontend       NodePort    10.99.77.22      <none>        80:30531/TCP   6s
-kubernetes     ClusterIP   10.96.0.1        <none>        443/TCP        2d5h
-redis-master   ClusterIP   10.106.65.211    <none>        6379/TCP       115s
-redis-slave    ClusterIP   10.104.243.238   <none>        6379/TCP       56s
-```
-
-### 4.3.3 - Viewing the Frontend Service via NodePort
-
-If you deployed this application to a local cluster, you need to find the IP address to view your Guestbook. As we did in the Part 3, we will use the `kubectl describe` command to collect the details on the `EndPoint` (the IP address which exposes all the `NodePorts` in the cluster) and the `NodePort` for the *frontend Service*:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe svc/frontend
-Name:                     frontend
-Namespace:                default
-Labels:                   app=guestbook
-                          tier=frontend
-Annotations:              Selector:  app=guestbook,tier=frontend
-Type:                     NodePort
-IP:                       10.99.77.22
-Port:                     <unset>  80/TCP
-TargetPort:               80/TCP
-NodePort:                 <unset>  30531/TCP
-Endpoints:                10.244.1.3:80,10.244.3.3:80,10.244.4.3:80
-Session Affinity:         None
-External Traffic Policy:  Cluster
-Events:                   <none>
-```
-
-You now know the `NodePort`: `30531`. Checking the kubernetes Service, you will also get the `EndPoint` which is used to expose all NodePort-type services:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe svc/kubernetes
-Name:              kubernetes
-Namespace:         default
-Labels:            component=apiserver
-                   provider=kubernetes
-Annotations:       <none>
-Selector:          <none>
-Type:              ClusterIP
-IP:                10.96.0.1
-Port:              https  443/TCP
-TargetPort:        6443/TCP
-Endpoints:         172.18.0.3:6443
-Session Affinity:  None
-Events:            <none>
-```
-
-Here you are: `172.18.0.5`. You know both the IP and the port used to expose the frontend Service:
-
-```
-tuto@laptop:~/learn-kubernetes$ export ENDPOINT=172.18.0.3
-tuto@laptop:~/learn-kubernetes$ export NODE_PORT=30531
-
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-curl $ENDPOINT:$NODE_PORT
-<html ng-app="redis">
-  <head>
-    <title>Guestbook</title>
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.12/angular.min.js"></script>
-    <script src="controllers.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.13.0/ui-bootstrap-tpls.js"></script>
-  </head>
-  <body ng-controller="RedisCtrl">
-    <div style="width: 50%; margin-left: 20px">
-      <h2>Guestbook</h2>
-    <form>
-    <fieldset>
-    <input ng-model="msg" placeholder="Messages" class="form-control" type="text" name="input"><br>
-    <button type="button" class="btn btn-primary" ng-click="controller.onRedis()">Submit</button>
-    </fieldset>
-    </form>
-    <div>
-      <div ng-repeat="msg in messages track by $index">
-        {{msg}}
-      </div>
-    </div>
-    </div>
-  </body>
-</html>
-```
-
-We receive HTML code, which means that the server is well exposed at this URL. Copy this URL (`172.18.0.5:31370`) and load the page in your browser to view your guestbook: a very simple app enabling guests to exchange messages.
-
-![alt txt](./images/tuto-4-guestbook-app.png "A very simple Guestbook app")
-
-
-## 4.4 - Scale the Web Frontend
-
-Scaling up or down is easy because your servers are defined as a _Service_ that uses a _Deployment_ controller.
-
-Run the following command to scale up the number of frontend _Pods_:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl scale deployment frontend --replicas=5
-deployment.apps/frontend scaled
-```
-
-Query the list of _Pods_ to verify the number of frontend _Pods_ running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods
-NAME                            READY   STATUS    RESTARTS   AGE
-frontend-56fc5b6b47-8jj2r       1/1     Running   0          2m28s
-frontend-56fc5b6b47-9dlwz       1/1     Running   0          7s
-frontend-56fc5b6b47-dchgw       1/1     Running   0          2m28s
-frontend-56fc5b6b47-k8lp7       1/1     Running   0          2m28s
-frontend-56fc5b6b47-s8cwj       1/1     Running   0          7s
-redis-master-6b54579d85-zrbv2   1/1     Running   0          4m37s
-redis-slave-799788557c-npxf4    1/1     Running   0          3m19s
-redis-slave-799788557c-xt6zf    1/1     Running   0          3m19s
-```
-
-Run the following command to scale down the number of frontend Pods:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl scale deployment frontend --replicas=2
-deployment.apps/frontend scaled
-```
-
-Query the list of Pods to verify the number of frontend Pods running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods
-NAME                            READY   STATUS        RESTARTS   AGE
-frontend-56fc5b6b47-8jj2r       0/1     Terminating   0          2m50s
-frontend-56fc5b6b47-9dlwz       0/1     Terminating   0          29s
-frontend-56fc5b6b47-dchgw       1/1     Running       0          2m50s
-frontend-56fc5b6b47-k8lp7       1/1     Running       0          2m50s
-frontend-56fc5b6b47-s8cwj       0/1     Terminating   0          29s
-redis-master-6b54579d85-zrbv2   1/1     Running       0          4m59s
-redis-slave-799788557c-npxf4    1/1     Running       0          3m41s
-redis-slave-799788557c-xt6zf    1/1     Running       0          3m41s
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods
-NAME                            READY   STATUS    RESTARTS   AGE
-frontend-56fc5b6b47-dchgw       1/1     Running   0          2m58s
-frontend-56fc5b6b47-k8lp7       1/1     Running   0          2m58s
-redis-master-6b54579d85-zrbv2   1/1     Running   0          5m7s
-redis-slave-799788557c-npxf4    1/1     Running   0          3m49s
-redis-slave-799788557c-xt6zf    1/1     Running   0          3m49s
-```
-
-and let's now have a look at how the _Pods_ are distributed over the _Nodes_:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                            READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
-frontend-56fc5b6b47-dchgw       1/1     Running   0          3m8s    10.244.3.3   k8s-tuto-worker4   <none>           <none>
-frontend-56fc5b6b47-k8lp7       1/1     Running   0          3m8s    10.244.4.3   k8s-tuto-worker    <none>           <none>
-redis-master-6b54579d85-zrbv2   1/1     Running   0          5m17s   10.244.2.2   k8s-tuto-worker2   <none>           <none>
-redis-slave-799788557c-npxf4    1/1     Running   0          3m59s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
-redis-slave-799788557c-xt6zf    1/1     Running   0          3m59s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
-```
-
-As expected, the Master tend to distribute the load as evenly as possible across the whole cluster. In our case, all _Nodes_ carry only one _Pod_, except one _Node_ which carries two _Pods_.
 
 
 ## 4.5 - Testing the resilience

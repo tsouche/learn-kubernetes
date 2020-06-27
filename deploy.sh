@@ -14,7 +14,7 @@
 #       https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0/aio/deploy/recommended.yaml
 
 cluster_name="k8s-tuto"
-deploy_directory="./deploy"
+deploy_directory="./cluster-deploy"
 sandbox_directory="./sandbox"
 cluster_configuration="kind-cluster.yaml"
 dashboard_configuration="recommended.yaml"

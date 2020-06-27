@@ -1,24 +1,28 @@
 apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
 kind: Deployment
 metadata:
-  name: frontend
+  name: webserver
   labels:
-    app: guestbook
+    application: hello-world-part4
+    tier: frontend
+    component: webserver
 spec:
   selector:
     matchLabels:
-      app: guestbook
+      application: hello-world-part4
       tier: frontend
+      component: webserver
   replicas: 3
   template:
     metadata:
       labels:
-        app: guestbook
+        application: hello-world-part4
         tier: frontend
+        component: webserver
     spec:
       containers:
-      - name: php-redis
-        image: gcr.io/google-samples/gb-frontend:v4
+      - name: app-part4
+        image: tsouche/learn-kubernetes:part4
         resources:
           requests:
             cpu: 100m
@@ -36,4 +40,3 @@ spec:
           # value: env
         ports:
         - containerPort: 80
-
