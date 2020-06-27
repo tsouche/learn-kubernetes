@@ -6,6 +6,7 @@ metadata:
     application: hello-world-part4
     tier: backend
     component: redis-master
+    role: master
 spec:
   selector:
     matchLabels:
@@ -23,7 +24,7 @@ spec:
         role: master
     spec:
       containers:
-      - name: master
+      - name: redis-master
         #image: k8s.gcr.io/redis:e2e  # or just image: redis
         image: redis
         resources:

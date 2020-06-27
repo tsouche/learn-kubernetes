@@ -3,24 +3,29 @@ kind: Deployment
 metadata:
   name: redis-slave
   labels:
-    app: redis
+    application: hello-world-part4
+    tier: backend
+    component: redis-slave
+    role: slave
 spec:
   selector:
     matchLabels:
-      app: redis
-      role: slave
+      application: hello-world-part4
       tier: backend
+      component: redis-slave
+      role: slave
   replicas: 2
   template:
     metadata:
       labels:
-        app: redis
-        role: slave
+        application: hello-world-part4
         tier: backend
+        component: redis-slave
+        role: slave
     spec:
       containers:
-      - name: slave
-        image: gcr.io/google_samples/gb-redisslave:v3
+      - name: redis-slave
+        image: redis
         resources:
           requests:
             cpu: 100m
@@ -38,4 +43,3 @@ spec:
           # value: env
         ports:
         - containerPort: 6379
-

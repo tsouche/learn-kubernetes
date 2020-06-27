@@ -16,14 +16,23 @@ kubectl describe service kubernetes
 # check the app without redis backend (replace with the real values obtained above)
 curl 172.18.0.5:32112
 
-# deploy the backend
+# deploy the backend master
 kubectl apply -f ./app-part4/redis-master-deployment.yaml
 kubectl get deployment
 kubectl get pods -o wide
-# expose the backend
+# expose the backend master
 kubectl apply -f ./app-part4/redis-master-service.yaml
 kubectl get service
 kubectl get pods -o wide
+# deploy the backend slave
+kubectl apply -f ./app-part4/redis-slave-deployment.yaml
+kubectl get deployment
+kubectl get pods -o wide
+# expose the backend slave
+kubectl apply -f ./app-part4/redis-slave-service.yaml
+kubectl get service
+kubectl get pods -o wide
+
 
 # check again the app with redis backend
 curl 172.18.0.5:32112
