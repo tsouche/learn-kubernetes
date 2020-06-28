@@ -4,11 +4,10 @@
 # Tutorial. We assume that the cluster is up and running.
 
 # Go to the tutorial directory
-cd ~/learn-kubernetes/
+cd /tuto/learn-kubernetes/
 
 # Deploy the first application
-kubectl create deployment hello-part3 \
-    --image=tsouche/learn-kubernetes:part3v1
+kubectl create deployment hello-part3 --image=tsouche/learn-kubernetes:part3v1
 
 # check the pods status
 kubectl get pods
@@ -58,8 +57,8 @@ curl $ENDPOINT:$NODE_PORT
 
 # using labels
 kubectl describe deployment
-kubectl get pods -l app=hello
-kubectl get services -l app=hello
+kubectl get pods -l app=hello-part3
+kubectl get services -l app=hello-part3
 export POD_NAME=$(kubectl get pods -o go-template \
     --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
 echo $POD_NAME
@@ -68,11 +67,62 @@ kubectl describe pods $POD_NAME
 kubectl get pods -l version=v1
 
 # delete everything
-kubectl delete service -l app=hello
+kubectl delete service -l app=hello-part3
 kubectl get services
 curl $ENDPOINT:$NODE_PORT
 kubectl exec -ti $POD_NAME -- curl localhost:80
 kubectl expose deployment/hello --type="NodePort" --port 80
-kubectl describe svc/hello
-NODE_PORT=32731
+kubectl describe svc/hello-part3
+export NODE_PORT=30558
 curl $ENDPOINT:$NODE_PORT
+
+# scale up your app
+kubectl get deployments
+kubectl scale deployments/hello-part3 --replicas=4
+kubectl get deployments
+kubectl get pods -o wide
+kubectl describe deployments/hello-part3
+kubectl describe services/hello-part3
+curl $ENDPOINT:$NODE_PORT
+
+# scale down your app
+kubectl scale deployments/hello-part3 --replicas=2
+kubectl get deployments
+kubectl get pods -o wide
+
+# update the version of the app
+kubectl get deployments
+kubectl describe pods
+kubectl get pods -o wide
+
+# verify the update
+kubectl describe services/hello-part3
+curl $ENDPOINT:$NODE_PORT
+kubectl rollout status deployments/hello-part3
+kubectl describe deployment/hello-part3
+
+# rollback the update
+kubectl set image deployment/hello-part3 learn-kubernetes=tsouche/learn-kubernetes:part3v10
+kubectl get deployments
+kubectl get pods -o wide
+kubectl describe pods
+kubectl rollout undo deployments/hello-part3
+kubectl get deployments
+kubectl get pods -o wide
+kubectl describe pods
+
+# expose your app even more publicly
+kubectl delete service hello-part3
+kubectl delete deployment hello-part3
+kubectl apply -f ./app-part3/webserver-deployment-v1.yaml
+kubectl describe deployment hello-part3-deployment
+kubectl get pods -o wide --watch
+kubectl apply -f ./app-part3/webserver-service.yaml
+kubectl describe service hello-part3-service
+kubectl apply -f ./app-part3/webserver-ingress.yaml
+kubectl describe ingress hello-part3-ingress
+curl localhost/part3
+kubectl apply -f ./app-part3/webserver-deployment-v2.yaml
+kubectl describe deployment hello-part3-deployment
+kubectl get pods -o wide --watch
+curl localhost/part3

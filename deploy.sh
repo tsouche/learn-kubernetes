@@ -102,8 +102,8 @@ echo "Deploy an ingress controller"
 echo "========================================================================"
 echo "..."
 
-kubectl apply -f cluster-deploy/ambassador-operator-crds.yaml
-kubectl apply -n ambassador -f cluster-deploy/ambassador-operator-kind.yaml
+kubectl apply -f ./cluster-deploy/ambassador-operator-crds.yaml
+kubectl apply -n ambassador -f ./cluster-deploy/ambassador-operator-kind.yaml
 kubectl wait --timeout=180s -n ambassador --for=condition=deployed ambassadorinstallations/ambassador
 
 echo "done"
