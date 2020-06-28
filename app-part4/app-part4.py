@@ -1,13 +1,8 @@
 from flask import Flask
 from redis import Redis, RedisError
 import os
-import socket
 
 # Connect to Redis
-#redis_ip = os.getenv("REDIS_MASTER_SERVICE_HOST")
-#redis_port = os.getenv("REDIS_MASTER_SERVICE_PORT")
-#redis_server = "{redis_ip}:{redis-port}".format(redis_ip, redis_port)
-#redis_server="redis-master"
 redis = Redis(host="redis-master", db=0, socket_connect_timeout=2, socket_timeout=2)
 
 app = Flask(__name__)
@@ -18,21 +13,18 @@ def version():
 
 @app.route("/")
 def hello():
-    try:
-        name=os.getenv("NAME", "world")
-    except:
-        name="I don't know who to salute..."
-    try:
-        hostname=os.getenv("HOSTNAME")
-    except:
-        hostname="I can't find my host name"
+    #capture the variables
+    name=os.getenv("NAME", "world")
+    host=os.getenv("HOSTNAME")
     try:
         visits = redis.incr("counter")
     except RedisError:
         visits = "<i>cannot connect to Redis, counter disabled</i>"
-
-    html = "<h3>Hello {name}!</h3><br/><b>Hostname:</b> {hostname} " \
-           "<b>Visits:</b>   {visits}<br/>".format(name, hostname, visits)
+        # build the html response
+    html = "<h3>Hello {name}!</h3><br/>" \
+           "<b>Visits:</b>   {visits}<br/>" \
+           "<b>Hostname:</b> {hostname} " \
+           "<br/>".format(name=name, hostname=host, visits=visits)
     return html
 
 if __name__ == "__main__":
