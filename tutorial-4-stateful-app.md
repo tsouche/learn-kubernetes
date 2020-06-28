@@ -3,16 +3,31 @@
 
 In this section, you will build and deploy a simple, multi-tier web application: it is an improved version of the *Hello World!* application deployed in Part 3:
 * the web frontend is a python application (very similar to Part 3 application), except that it displays a _'visitors counter'_ which increments each time the web page is visited. We will deploy several instances of this frontend, and the interesting feature is that the visit counter is shared amonst all instances;
-* a single-instance Redis backend, used to store and share the _visitors counter_ which is the only stateful information in our very simple case.
+* a single-instance Redis Master backend, used to store and share the _visitors counter_ which is the only stateful information in our very simple case.
+* replicated Redis Slave backend, used to off-load the read requests over multiple slave Pods, so as to preserve the Master Pod for writing requests.
 
 
-## 4.1 - Set up and Expose the Hello-world webserver
+## 4.1 - Labels for our applications
+
+
+In this section of the tutorial, we will use more elaborate YAML files to describe the backend and frontend _Deployments_ and _Services_. Not only these files will enable the various components of the app to communicate with each others, but we will also use _labels_ in order to tag the various components of the applications *(and then later be able to dientify or select the application resources accordingly)*.
+
+Our **application** is composed of two **tiers**, each being composed of one or more **components**: hence, when looking into the configuration files, you will see the following _labels_:
+
+| `LabelSelector` | `Value` | Explanation |
+| --- | --- | --- |
+| `application` | `hello-world-part4` | This is the name that we give to the **_application_**, which is composed of a **_frontend_** tier and a **_backend_** tier. This label will enable to identify or selct all the resources needed to run  contributing to the **_application_**. |
+| `tier` | `frontend` or `backend` | This label enables to identify / select all the resources needed to run a given **_tier_**: the **_front-_** or the **_back-end_**. In our case, there is only one _Deployment_ and only one _Service_ for each **_tier_**, but you could have built the app with two **_backend components_**: a _Redis Master_ used to serve the write requests (it would still be a SPOF: one single Pod running on one single Node) and a _Redis Slave_ used to serve the read requests, which could run several replicas in order to manage more loads from the multiple **_frontend_** replicas. |
+| `component` | `webserver` or `redis-master` | This _labels_ identify each **_components_**, of which the **_tiers_** are composed. |
+
+
+## 4.2 - Set up and Expose the Hello-world webserver
 
 
 The `hello-world` application is a web frontend writen in python and serving the HTTP requests. It is configured to connect to the _Redis Service_ for reading and incrementing the _visitors counter_.
 
 
-### 4.1.1 - Looking into the new 'Hello-World' application
+### 4.2.1 - Looking into the new 'Hello-World' application
 
 
 As we saw in Part 3, the new 'hello-world' application which we will use in Part 4 must be packaged into a Docker container: the corresponding image is available from DockerHub under my public repository, with the name `learn-kubernetes` and the tag `part4`: the **Appendix 1** explains how this image is built. The source files are in the `./app-part4` directory:
@@ -83,17 +98,9 @@ As you can see when looking into the python script, the application will show a 
 * if the Redis backend is not available, then it will simply indicate it.
 
 
-### 4.1.2 - Creating the "Hello World!" Frontend Deployment
+### 4.2.2 - Creating the "Hello World!" Frontend Deployment
 
-
-In this section of the tutorial, we will use more elaborate YAML files to describe the backend and frontend _Deployments_ and _Services_, not only because they must talk to each others, but also because we will use _labels_ in order to identify the various components of the applications. When looking into the configuration files, you will see the following _labels_:
-
-| `LabelSelector` | `Value` | Explanation |
-| --- | --- | --- |
-| `application` | `hello-world-part4` | This is the name that we give to the **_application_**, which is composed of a **_frontend_** tier and a **_backend_** tier. This label will enable to identify or selct all the resources needed to run  contributing to the **_application_**. |
-| `tier` | `frontend` or `backend` | This label enables to identify / select all the resources needed to run a given **_tier_**: the **_front-_** or the **_back-end_**. In our case, there is only one _Deployment_ and only one _Service_ for each **_tier_**, but you could have built the app with two **_backend components_**: a _Redis Master_ used to serve the write requests (it would still be a SPOF: one single Pod running on one single Node) and a _Redis Slave_ used to serve the read requests, which could run several replicas in order to manage more loads from the multiple **_frontend_** replicas. |
-| `component` | `webserver` or `redis-master` | This _labels_ identify each **_components_**, of which the **_tiers_** are composed. |
-
+You will notice in the configuration file the triplet `application`-`tier`-`component`:
 
 File: `./app-part4/webserver-deployment.yaml`
 
@@ -427,13 +434,14 @@ tuto@laptop:~/learn-kubernetes$ kubectl get service
 
 This manifest file creates a _Service_ named `redis-master` with a set of _labels_ that match the _labels_ previously defined on the _Deployment_, so the _Service_ routes network traffic to the _Redis Master Pod_.
 
-You have here again an example of how important _labels_ are with Kubernetes.
+You have here again an example of how important _labels_ are to Kubernetes.
 
 
 
-### 4.1.3 - Label all components of the applications
+### 4.2.3 - Check the labels for all components of the application
 
-Our web application is actually composed of several services and deployments, and we will label all the components with `application=hello-part4`:
+
+Our web application is actually composed of several services and deployments, and we have labelled all the components with the following hierarchy:
 
 ```bash
 $ kubectl label pod $POD_NAME application=hello-part4

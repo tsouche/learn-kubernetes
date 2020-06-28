@@ -48,5 +48,16 @@ mv ./kind /usr/local/bin/kind
 
 # install `kubectl` v1.18.2
 curl -Lo ./kubectl https://storage.googleapis.com/kubernetes-release/release/v1.18.2/bin/linux/amd64/kubectl
-
+chmod +x ./kubectl
 mv ./kubectl /usr/local/bin/kubectl
+
+# clone the tutorial material in /tuto/leanr-Kubernetes
+if [ -d "/tuto" ]
+then
+  sudo rm -rf /tuto
+fi
+sudo mkdir /tuto
+sudo chmod +777 /tuto
+cd /tuto
+git clone https://github.com/tsouche/learn-kubernetes.git
+cd /tuto/learn-Kubernetes

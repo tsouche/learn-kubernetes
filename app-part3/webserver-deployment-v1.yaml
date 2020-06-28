@@ -1,28 +1,22 @@
 apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
 kind: Deployment
 metadata:
-  name: webserver
+  name: hello-part3-deployment
   labels:
-    application: hello-part4
-    tier: frontend
-    component: webserver
+    application: hello-part3
 spec:
   selector:
     matchLabels:
-      application: hello-part4
-      tier: frontend
-      component: webserver
+      application: hello-part3
   replicas: 3
   template:
     metadata:
       labels:
-        application: hello-part4
-        tier: frontend
-        component: webserver
+        application: hello-part3
     spec:
       containers:
-      - name: app-part4
-        image: tsouche/learn-kubernetes:part4
+      - name: app-part3
+        image: tsouche/learn-kubernetes:part3v1
         resources:
           requests:
             cpu: 100m

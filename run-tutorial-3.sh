@@ -7,8 +7,8 @@
 cd ~/learn-kubernetes/
 
 # Deploy the first application
-kubectl create deployment hello \
-    --image=tsouche/learn-kubernetes:part3
+kubectl create deployment hello-part3 \
+    --image=tsouche/learn-kubernetes:part3v1
 
 # check the pods status
 kubectl get pods
@@ -47,9 +47,9 @@ kubectl exec -ti $POD_NAME -- bash
 # create a new Kubernetes Service
 kubectl get pods
 kubectl get services
-kubectl expose deployment/hello --type="NodePort" --port 80
+kubectl expose deployment/hello-part3 --type="NodePort" --port 80
 kubectl get services
-kubectl describe services/hello
+kubectl describe services/hello-part3
 
 export NODE_PORT=30985
 kubectl describe services/kubernetes

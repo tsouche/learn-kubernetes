@@ -20,7 +20,7 @@ def hello():
         visits = redis.incr("counter")
     except RedisError:
         visits = "<i>cannot connect to Redis, counter disabled</i>"
-        # build the html response
+    # build the html response
     html = "<h3>Hello {name}!</h3><br/>" \
            "<b>Visits:</b>   {visits}<br/>" \
            "<b>Hostname:</b> {hostname} " \

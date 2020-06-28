@@ -534,7 +534,6 @@ from flask import Flask
 import os
 import socket
 
-
 app = Flask(__name__)
 
 @app.route("/")
@@ -1364,7 +1363,153 @@ Events:
 We see that the _Deployment_ is using a stable version of the `app` (`v2`). The Rollback was successful.
 
 
-## 3.8 - Conclusion
+### 3.8 - Exposing your app even more publicly!!!
+
+
+The previous sections demonstrate that it is possible to expose the _Service_ to the outside of the cluster, but it is quite combersome because you have to fetch with `kubectl describe` the IP address (the Kubernetes `ENDPOINT`) and the port (the _Service_ `NODE_PORT`). We will now use another capability offered by Kubernetes, an _Ingress_, in order to automate this exposure: we will map the _Service_ to the host.
+
+> Note: Keep in mind that the host - i.e. the machine on which you are currently reading this tutorial - is NOT within the Kubernetes cluster, and that the Kubernetes clsuter does NOT manage this machine. In order to keep things simple, we expose the service to the host, but the _Ingress_ could as well have been continuated to a another server, this server being exposed to the internet for instance.
+
+To route a given service towards the _Ingress_, we will first remove the previous _Deployment_ (created when you have run the `kubectl create deployment` command) and _Service_ (created when you have run the `kubectl expose` command). Then we will re-create the same _Deployment_ and _Service_, using YAML configuration files (which is a convenient alternative to runung each command at a time, typing again all the arguments), adn then we will create a brand new _Ingress_ to expose this newly-created _Service_ to the host.
+
+Let's first remove the existing _Deployment_ and _Service_:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl delete service hello-part3
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl delete deployment hello-part3
+*** update the output ***
+```
+
+The YAML configuration files are available in the `./app-part3/` directory:
+
+File 1: `./app-part3/webserver-deployment-v1.yaml`
+
+> Note: The almost exact same file exist in the directory, deploying the v2 of the application: it simply points to the image `tsouche/learn-kubernetes:part3v2`.
+
+```yaml
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: hello-part3-deployment
+  labels:
+    application: hello-part3
+spec:
+  selector:
+    matchLabels:
+      application: hello-part3
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        application: hello-part3
+    spec:
+      containers:
+      - name: app-part3
+        image: tsouche/learn-kubernetes:part3v1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+          # Using `GET_HOSTS_FROM=dns` requires your cluster to
+          # provide a dns service. As of Kubernetes 1.3, DNS is a built-in
+          # service launched automatically. However, if the cluster you are using
+          # does not have a built-in DNS service, you can instead
+          # access an environment variable to find the master
+          # service's host. To do so, comment out the 'value: dns' line above, and
+          # uncomment the line below:
+          # value: env
+        ports:
+        - containerPort: 80
+```
+
+File 2: `./app-part3/webserver-service.yaml`
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-part3-service
+  labels:
+    application: hello-part3
+spec:
+  # comment or delete the following line if you want to use a LoadBalancer
+  type: NodePort
+  # if your cluster supports it, uncomment the following to automatically create
+  # an external load-balanced IP for the frontend service.
+  # type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    application: hello-part3
+```
+
+File 3: `./app-part3/webserver-ingress.yaml`
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hello-part3-ingress
+  annotations:
+    kubernetes.io/ingress.class: ambassador
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /part3
+        backend:
+          serviceName: hello-part3-service
+          servicePort: 80
+```
+
+When you look at the YAML scripts, you can see that the _Deployment_, _Service_ and the _Ingress_ are given non-ambigouus names, and that the _Deployment_ and the _Service_ share the same _Label_`application=hello-part3` (so that they can communicate easily wihtin the cluster). So now, let's use there configuration files with the `kubectl apply -f` command:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part3/webserver-deployment-v1.yaml
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl describe deployment hello-part3-deployment
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide --watch
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part3/webserver-service.yaml
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl describe service hello-part3-service
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part3/webserver-ingress.yaml
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl describe ingress hello-part3-ingress
+*** update the output ***
+```
+> Note: the good news is that these configuration files can be concatenated so as to run one single command: if you are interested, you can find `webserver-allinone-v1.yaml` in the same directory.
+
+Now that we have setup an ingress which maps the `hello-part3-service` _Service_ to the host on the route `/part3`, we should be able to see it by polling with `curl` the local host:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ curl localhost/part3
+*** update the output ***
+```
+
+***Yes!!!*** **So simple!** :smile:
+
+Let's do a last check: let's update the version of the application, and check that it actually changes the result on the web server. Upgrading hte version to `v2` is simple: just run the `kubectl apply -f` with the Deployment file for the `v2`:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part3/webserver-deployment-v2.yaml
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl describe deployment hello-part3-deployment
+*** update the output ***
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide --watch
+*** update the output ***
+```
+
+So, not only we can use very convenient YAML configuration files, but we also can enjoy Kubernetes' idempotent behaviour: simply change a `spec` in the file, and it updates the desired state, which triggers all the Master's controllers to get in action in order to reach this desired state: so powerfull!
+
+
+## 3.9 - Conclusion
 
 At this step in the tutorial, you know how to deploy a stateless app on the cluster, and how to manage simple operations like a scaling in and out, or a version update.
 

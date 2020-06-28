@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: redis-slave
   labels:
-    application: hello-world-port4
+    application: hello-port4
     tier: backend
     component: redis-slave
     role: slave
@@ -11,7 +11,7 @@ spec:
   ports:
   - port: 6379
   selector:
-    application: hello-world-port4
+    application: hello-port4
     tier: backend
     component: redis-slave
     role: slave

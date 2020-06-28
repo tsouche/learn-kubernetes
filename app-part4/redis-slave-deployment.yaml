@@ -3,14 +3,14 @@ kind: Deployment
 metadata:
   name: redis-slave
   labels:
-    application: hello-world-part4
+    application: hello-part4
     tier: backend
     component: redis-slave
     role: slave
 spec:
   selector:
     matchLabels:
-      application: hello-world-part4
+      application: hello-part4
       tier: backend
       component: redis-slave
       role: slave
@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       labels:
-        application: hello-world-part4
+        application: hello-part4
         tier: backend
         component: redis-slave
         role: slave
