@@ -98,9 +98,11 @@ As you can see when looking into the python script, the application will show a 
 * if the Redis backend is not available, then it will simply indicate it.
 
 
-### 4.2.2 - Creating the "Hello World!" Frontend Deployment
+### 4.2.2 - Rolling out and exposing the "Hello World!" frontend
 
-You will notice in the configuration file the triplet `application`-`tier`-`component`:
+
+You will notice in the _Deployment_, _Service_ and _Ingress_ configuration file the triplet labels `application`-`tier`-`component`:
+
 
 File: `./app-part4/webserver-deployment.yaml`
 
@@ -149,48 +151,6 @@ spec:
         - containerPort: 80
 ```
 
-Let's apply this file to run the frontend _Deployment_:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/webserver-deployment.yaml
-deployment.apps/webserver created
-```
-
-Query the list of Pods to verify that the 3 frontend replicas are running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend
-NAME                         READY   STATUS              RESTARTS   AGE
-webserver-74689b446b-fll64   0/1     ContainerCreating   0          19s
-webserver-74689b446b-qhsh8   0/1     ContainerCreating   0          19s
-webserver-74689b446b-wfzrh   0/1     ContainerCreating   0          19s
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend
-NAME                         READY   STATUS    RESTARTS   AGE
-webserver-74689b446b-fll64   1/1     Running   0          78s
-webserver-74689b446b-qhsh8   1/1     Running   0          78s
-webserver-74689b446b-wfzrh   1/1     Running   0          78s
-```
-
-We will now use labels in order to identify resources (even though at this stage of the tutorial the only deployed _Pods_ are the `frontend` of the `hello-worl-part4` application), and check that the replicas are well distributed over the _Nodes_ of the cluster:
-
-```bash
-ttuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend -o wide
-NAME                         READY   STATUS    RESTARTS   AGE    IP           NODE               NOMINATED NODE   READINESS GATES
-webserver-74689b446b-fll64   1/1     Running   0          2m3s   10.244.2.2   k8s-tuto-worker3   <none>           <none>
-webserver-74689b446b-qhsh8   1/1     Running   0          2m3s   10.244.3.2   k8s-tuto-worker    <none>           <none>
-webserver-74689b446b-wfzrh   1/1     Running   0          2m3s   10.244.1.2   k8s-tuto-worker2   <none>           <none>
-```
-
-You can see again the importance of well thinking through the use of _labels_: it can be overwelmingly powerful when the time comes to debug complex and seamingly erratic issues in production.
-
-
-### 4.1.2 - Creating the webserver _Service_
-
-Since we want users from outside the cluster to be able to access your web application, we must configure the *webserver Service* to be externally visible: we will expose the _webserver Service_ through `NodePort`.
-
-> Note: Some cloud providers, like Google Compute Engine, support external load balancers. If your cloud provider supports load balancers and you want to use it, simply delete or comment out type: NodePort, and uncomment type: LoadBalancer.
-
 File: `./app-part4/webserver-service.yaml`
 
 ```yaml
@@ -216,48 +176,75 @@ spec:
     component: webserver
 ```
 
-Let's apply this file to run the frontend Service:
+File: `./app-part4/webserver-ingress.yaml`
 
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/webserver-service.yaml
-service/webserver created
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hello-part4-ingress
+  annotations:
+    kubernetes.io/ingress.class: ambassador
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /part4
+        backend:
+          serviceName: hello-part4-service
+          servicePort: 80
 ```
 
-Query the list of _Services_ to verify that the *frontend Service* is running:
+Let's apply these files to run the frontend _Deployment_, _Service_ and _Ingress_:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/webserver-deployment.yaml
+deployment.apps/webserver created
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/webserver-service.yaml
+service/hello-part4-service created
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/webserver-ingress.yaml
+ingress.extensions/hello-part4-ingress created
+```
+
+Query the list of Pods to verify that the 3 frontend replicas are running. We will use labels in order to identify resources (even though at this stage of the tutorial the only deployed _Pods_ are the `frontend` of the `hello-worl-part4` application), and check that the replicas are well distributed over the _Nodes_ of the cluster:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend
+NAME                                      READY   STATUS              RESTARTS   AGE
+hello-part4-deployment-6695fc768f-4bgrn   1/1     ContainerCreating   0          19s
+hello-part4-deployment-6695fc768f-x9gdh   1/1     ContainerCreating   0          19s
+hello-part4-deployment-6695fc768f-xkbbg   1/1     ContainerCreating   0          19s
+
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend
+NAME                                      READY   STATUS    RESTARTS   AGE
+hello-part4-deployment-6695fc768f-4bgrn   1/1     Running   0          21s
+hello-part4-deployment-6695fc768f-x9gdh   1/1     Running   0          21s
+hello-part4-deployment-6695fc768f-xkbbg   1/1     Running   0          21s
+```
+
+```bash
+ttuto@laptop:~/learn-kubernetes$ kubectl get pods -l application=hello-world-part4 -l tier=frontend -o wide
+NAME                                      READY   STATUS    RESTARTS   AGE    IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part4-deployment-6695fc768f-4bgrn   1/1     Running   0          2m3s   10.244.2.2   k8s-tuto-worker3   <none>           <none>
+hello-part4-deployment-6695fc768f-x9gdh   1/1     Running   0          2m3s   10.244.3.2   k8s-tuto-worker    <none>           <none>
+hello-part4-deployment-6695fc768f-xkbbg   1/1     Running   0          2m3s   10.244.1.2   k8s-tuto-worker2   <none>           <none>
+```
+
+> Note: You can see again the importance of well thinking through the use of _labels_: it can be overwelmingly powerful when the time comes to debug complex and seamingly erratic issues in production.
+
+### 4.1.2 - Viewing the Webserver Service via `NodePort` and the _Ingress_
+
+
+Let's query the list of _Services_ to verify that the *frontend Service* is running:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get services
-NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
-kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP        6h28m
-webserver    NodePort    10.104.159.200   <none>        80:30045/TCP   8s
+NAME                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+hello-part4-service    NodePort    10.104.159.200   <none>        80:30045/TCP   8s
+kubernetes             ClusterIP   10.96.0.1        <none>        443/TCP        6h28m
 ```
 
-Ok, the _webserver Service_ is now up and running: let's try to access it.
-
-### 4.1.3 - Viewing the Webserver Service via NodePort
-
-If you deployed this application to a local cluster, you need to find the IP address to view your web application. As we did in the Part 3, we will use the `kubectl describe` command to collect the details on the `EndPoint` (the IP address which exposes all the `NodePorts` in the cluster) and the `NodePort` for the *frontend Service*:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl describe svc/webserver
-Name:                     webserver
-Namespace:                default
-Labels:                   application=hello-world-part4
-                          component=webserver
-                          tier=frontend
-Annotations:              Selector:  application=hello-world-part4,component=webserver,tier=frontend
-Type:                     NodePort
-IP:                       10.104.159.200
-Port:                     <unset>  80/TCP
-TargetPort:               80/TCP
-NodePort:                 <unset>  30045/TCP
-Endpoints:                10.244.1.2:80,10.244.2.2:80,10.244.3.2:80
-Session Affinity:         None
-External Traffic Policy:  Cluster
-Events:                   <none>
-```
-
-You now know the `NodePort`: `30045`. Checking the kubernetes Service, you will also get the `EndPoint` which is used to expose all NodePort-type services:
+Ok, the _webserver Service_ is now up and running and the `NODEPORT`is `30045`: let's try to access it via the Nodeport first. As we did in Part 3, we will find the Kuberntes cluster's `ENDPOINT` looking at the _Kubernetes Service_:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl describe svc/kubernetes
@@ -278,49 +265,57 @@ Events:            <none>
 
 Here you are: `172.18.0.4`. You know both the IP and the port used to expose the frontend Service: you can hit into the web server multiple times using `curl` in order to check that the server is up and that the load is balanced over the 3 replicas:
 
-```
+```bash
 tuto@laptop:~/learn-kubernetes$ export ENDPOINT=172.18.0.4
 tuto@laptop:~/learn-kubernetes$ export NODE_PORT=30045
 
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-wfzrh<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+<h3>Hello World!</h3><br/><b>Visits:</b>   <i>cannot connect to Redis, counter disabled</i><br/><b>Hostname:</b> hello-part4-deployment-6695fc768f-4bgrn <br/>
 tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-fll64<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-wfzrh<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-qhsh8<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-qhsh8<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
-tuto@laptop:~/learn-kubernetes$ curl $ENDPOINT:$NODE_PORT
-<h3>Hello World!</h3><b>Hostname:</b> webserver-74689b446b-fll64<br/><b>Visits:</b> <i>cannot connect to Redis, counter disabled</i>
+<h3>Hello World!</h3><br/><b>Visits:</b>   <i>cannot connect to Redis, counter disabled</i><br/><b>Hostname:</b> hello-part4-deployment-6695fc768f-xkbbg <br/>
 ```
 
-We receive HTML code, which means that the server is well exposed at this URL.And we can confirm that:
+It works: as expected, the frontend cannot connect to the Redis database since the service was not yet deployed so the frontend only displays the `ContainerID` of the Pod which serves the request. But let's now use the _Ingress_ to make our life much simpler: the YAML configuration file indicates to the Master that the route `/part4` needs to be routed to the frontend:
 
+```bash
+tuto@laptop:~/learn-kubernetes$ curl localhost/part4
+<h3>Hello World!</h3><br/><b>Visits:</b>   <i>cannot connect to Redis, counter disabled</i><br/><b>Hostname:</b> hello-part4-deployment-6695fc768f-xkbbg <br/>
+tuto@laptop:~/learn-kubernetes$ curl localhost/part4
+<h3>Hello World!</h3><br/><b>Visits:</b>   <i>cannot connect to Redis, counter disabled</i><br/><b>Hostname:</b> hello-part4-deployment-6695fc768f-x9gdh <br/>
+tuto@laptop:~/learn-kubernetes$ curl localhost/part4
+<h3>Hello World!</h3><br/><b>Visits:</b>   <i>cannot connect to Redis, counter disabled</i><br/><b>Hostname:</b> hello-part4-deployment-6695fc768f-4bgrn <br/>
+```
+
+You can also go on the browser and check with the URL `localhost/part4`. You should get something like this:
+
+![alt txt](./images/tuto-4-frontend-only.png "Frontend service without Redis backend")
+
+
+We can confirm that:
+
+* the frontend is well routed to the localhost;
 * the web server cannot access the Redis service, so the visitors counter is disabled,
 * and the requests are distributed randomly to the 3 replicas.
 
-Since the proxy is still up, you can also view the server on your browser: indicate to the browser your own values for `$ENDPOINT` (in this case: 172.18.0.4) and `$NODE_PORT` (in this case: 30045). It hsould look like this:
-
-![alt txt](./images/tuto-part4-frontend-only.png "Hello world application with no Redis backend")
-
-So everything works so far :smile:. It is time to get teh backend up and running.
+So everything works so far :smile:. It is time to get the backend up and running.
 
 
 ## 4.2 - Start up the Redis backend
 
+
 The application uses Redis to store its data. It writes its data to a single Redis Master instance and reads data from multiple Redis Slave instances.
 
-### 4.2.1 - Creating the Redis Deployment
-
-The manifest file, included below, specifies a _Deployment_ controller that runs a single replica _Redis Master Pod_.
-
-> Nota: the Redis backend service is called here **Redis Master** because the Redis datastore can be configured in such a way that the write requests are all served to the *Master Service* and that a *Slave Service* would serve all teh read requests. The advantage is that the *Slave Service* can then be replicated over multiple instances and thus be made resilient and scalable. However, the *Master Service* will still be *Single Point of Failure* (SPOF) because it cannot be distributed over multiple replicas: there one single instance of the *Master Service* running on one single _Node_.
-> In this section of the tutorial, we will not implement a _Slave Service_, since resilience is properly addressed in Part 5.
+> Nota: the Redis backend service is compsed of two components:
+> * the *Redis Master Service* will serve all the write requests, and is running on one single Pod on one single Node, because the Redis technology cannot easily have multiple Master writing for the *same* data chunk;
+> * the *Redis Slave Service* will serve all the read requests, and can be replicated over multiple Pods (on multiple Nodes): each replica holds a copy of the Master database, and can take off teh load for serving read requests.
+> * the *Redis Slave Service* can then be resilient and scalable. However, the *Redis Master Service* will still be *Single Point of Failure* (SPOF) because it cannot be distributed over multiple replicas.
 
 
-File: `./app-part4/redis-master-deployment.yaml`
+### 4.2.1 - Creating the Redis Master _Deployment_ and _Service_
+
+The manifest files, included below, specify a _Deployment_ and a _Service_ that runs a single replica _Redis Master Service_.
+
+File 1: `./app-part4/redis-master-deployment.yaml`
 
 ```yaml
 apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
@@ -358,44 +353,7 @@ spec:
         - containerPort: 6379
 ```
 
-Launch a terminal window and apply the *Redis Master Deployment* from the `redis-master-deployment.yaml` file:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/redis-master-deployment.yaml
-deployment.apps/redis-master created
-```
-
-Query the list of Pods to verify that the Redis Master Pod is running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                            READY   STATUS              RESTARTS   AGE   IP       NODE               NOMINATED NODE   READINESS GATES
-redis-master-6b54579d85-zrbv2   0/1     ContainerCreating   0          10s   <none>   k8s-tuto-worker2   <none>           <none>
-```
-
-Run the following command to view the logs from the Redis Master Pod:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ export POD_NAME=redis-master-77df76f8b8-rf28q
-***update the output here ***
-
-tuto@laptop:~/learn-kubernetes$ echo $POD_NAME
-***update the output here ***
-
-tuto@laptop:~/learn-kubernetes$ kubectl logs -f $POD_NAME
-***update the output here ***
-```
-
-Here we are: the _Pods_ is running and the master DB server has started, it is listening on port 6379.
-
-
-### 4.2.2 - Creating the *Redis Master Service*
-
-The web applications needs to communicate to the Redis master to read the visits counter and increment it. You need to apply a _Service_ to proxy the traffic to the _Redis Master Pod_. A `Service` defines a policy to access the _Pods_.
-
-The *Redis Master Service* is defined in the following `redis-master-service.yaml` file:
-
-File: `./app-part4/redis-master-service.yaml`
+File 2: `./app-part4/redis-master-service.yaml`
 
 ```yaml
 apiVersion: v1
@@ -418,55 +376,49 @@ spec:
     role: master
 ```
 
-Let's set up and run the *Redis Master Service*:
+Apply the *Redis Master Deployment* from the `redis-master-deployment.yaml` file:
 
 ```bash
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/redis-master-deployment.yaml
+deployment.apps/redis-master created
 tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-part4/redis-master-service.yaml
-***update the output here ***
+service/redis-master created
 ```
 
-Query the list of _Services_ to verify that the *Redis Master Service* is running:
+Query the list of Pods to verify that the Redis Master Pod is running, and check how the frontend behaves accordingly:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get service
-***update the output here ***
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
+NAME                            READY   STATUS              RESTARTS   AGE   IP       NODE               NOMINATED NODE   READINESS GATES
+redis-master-76fbb9b7bf-wk7hj   0/1     ContainerCreating   0          10s   <none>   k8s-tuto-worker    <none>           <none>
+
+tuto@laptop:~/learn-kubernetes$ curl localhost/part4
+<h3>Hello World!</h3><br/><b>Visits:</b>   <i>cannot connect to Redis, counter disabled</i><br/><b>Hostname:</b> hello-part4-deployment-6695fc768f-x9gdh <br/>
+
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
+NAME                            READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
+redis-master-76fbb9b7bf-wk7hj   1/1     Running   0          94s   10.244.3.5   k8s-tuto-worker    <none>           <none>
+
+tuto@laptop:~/learn-kubernetes$ curl localhost/part4
+<h3>Hello World!</h3><br/><b>Visits:</b>   1<br/><b>Hostname:</b> hello-part4-deployment-6695fc768f-x9gdh <br/>
+
+tuto@laptop:~/learn-kubernetes$ curl localhost/part4
+<h3>Hello World!</h3><br/><b>Visits:</b>   2<br/><b>Hostname:</b> hello-part4-deployment-6695fc768f-4bgrn <br/>
 ```
 
-This manifest file creates a _Service_ named `redis-master` with a set of _labels_ that match the _labels_ previously defined on the _Deployment_, so the _Service_ routes network traffic to the _Redis Master Pod_.
+It works as expected: the visitors counter starts incrementing as we hit the web server, and the requests are served to several frontend replicas. To this moment, there is still no _Redis Slave Service_ deployed, so we know that all requests go the _Redis Master Service_.
 
-You have here again an example of how important _labels_ are to Kubernetes.
+If you go the browser, it should look like that:
 
-
-
-### 4.2.3 - Check the labels for all components of the application
+![alt txt](./images/tuto-4-frontend+redis.png "Frontend with REdis backend, showing the number of visitors")
 
 
-Our web application is actually composed of several services and deployments, and we have labelled all the components with the following hierarchy:
-
-```bash
-$ kubectl label pod $POD_NAME application=hello-part4
-
-$ kubectl label deployment redis-master application=hello-part4
-
-$ kubectl label service redis-master application=hello-part4
-
-```
-
-Once this is done for all the application components, we will be able to identify or select any resource using the LabelSelector `application` and the value `hello-part4`. If you back at what we did in Part 3, when the application was composed of a frontend service only, we already used
+### 4.2.2 - Creating the *Redis Slave Deployment*
 
 
-## 4.2 - Start up the Redis Slaves
+We will setup the Redis Slave Deployment and Service by applying the corresponding YAML configuration files. The Redis Slave Deployment ask for 2 replicas to be created:
 
-Although the Redis Master is a single _Pod_, you can make it highly available to meet traffic demands by adding replica Redis slaves. This is not really a 'high availability' (HA) setup, since the Master _Node_ still is a Single Point Of Failure (SPOF) but it nevertheless brings resilience for the read operations, which is very important in many applicaitons (i.e. in many cases, the application read vey often and writes much more rarely).
-
-
-### 4.2.1 - Creating the *Redis Slave Deployment*
-
-_Deployments_ scale based of the configurations set in the manifest file. In this case, the _Deployment_ object specifies two replicas.
-
-If there are not any replicas running, this _Deployment_ would start the two replicas on your container cluster. Conversely, if there are more than two replicas are running, it would scale down until two replicas are running.
-
-File: `./app-guestbook/redis-slave-deployment.yaml`
+File 1: `./app-guestbook/redis-slave-deployment.yaml`
 
 ```yaml
 apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
@@ -511,29 +463,7 @@ metadata:
          - containerPort: 6379
 ```
 
-Let's apply this file to run the *Redis Slave Deployment*:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/redis-slave-deployment.yaml
-deployment.apps/redis-slave created
-```
-
-Query the list of _Pods_ to verify that the _Redis Slave Pods_ are running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                            READY   STATUS    RESTARTS   AGE   IP           NODE               NOMINATED NODE   READINESS GATES
-redis-master-6b54579d85-zrbv2   1/1     Running   0          90s   10.244.2.2   k8s-tuto-worker2   <none>           <none>
-redis-slave-799788557c-npxf4    1/1     Running   0          12s   10.244.1.2   k8s-tuto-worker3   <none>           <none>
-redis-slave-799788557c-xt6zf    1/1     Running   0          12s   10.244.2.3   k8s-tuto-worker2   <none>           <none>
-```
-
-
-### 4.2.2 - Creating the Redis Slave Service
-
-The guestbook application needs to communicate to Redis slaves to read data. To make the Redis slaves discoverable, you need to set up a _Service_. A _Service_ provides transparent load balancing to a set of _Pods_.
-
-File: `./app-guestbook/redis-slave-service.yaml`
+File 2: `./app-guestbook/redis-slave-service.yaml`
 
 ```yaml
 apiVersion: v1
@@ -553,25 +483,69 @@ spec:
     tier: backend
 ```
 
-Let's apply this file to run the *Redis Slave Service*:
+Let's apply these files to run the *Redis Slave Service*:
 
 ```bash
+tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/redis-slave-deployment.yaml
+deployment.apps/redis-slave created
 tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/redis-slave-service.yaml
 service/redis-slave created
+```
+
+Query the list of _Pods_ to verify that the _Redis Slave Pods_ are running:
+
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
+NAME                                      READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part4-deployment-6695fc768f-4bgrn   1/1     Running   0          25m     10.244.3.3   k8s-tuto-worker    <none>           <none>
+hello-part4-deployment-6695fc768f-x9gdh   1/1     Running   0          25m     10.244.1.5   k8s-tuto-worker2   <none>           <none>
+hello-part4-deployment-6695fc768f-xkbbg   1/1     Running   0          25m     10.244.3.4   k8s-tuto-worker    <none>           <none>
+redis-master-76fbb9b7bf-wk7hj             1/1     Running   0          94s     10.244.3.5   k8s-tuto-worker    <none>           <none>
+redis-slave-5bbbc574d6-sn5bz              1/1     Running   0          66s     10.244.1.6   k8s-tuto-worker2   <none>           <none>
+redis-slave-5bbbc574d6-z98gk              1/1     Running   0          66s     10.244.3.6   k8s-tuto-worker    <none>           <none>
 ```
 
 Query the list of _Services_ to verify that the *Redis slave Service* is running:
 
 ```bash
 tuto@laptop:~/learn-kubernetes$ kubectl get services
-NAME           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-kubernetes     ClusterIP   10.96.0.1        <none>        443/TCP    2d5h
-redis-master   ClusterIP   10.106.65.211    <none>        6379/TCP   65s
-redis-slave    ClusterIP   10.104.243.238   <none>        6379/TCP   6s
+NAME                  TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+hello-part4-service   NodePort    10.107.15.5     <none>        80:31122/TCP   25m
+kubernetes            ClusterIP   10.96.0.1       <none>        443/TCP        26h
+redis-master          ClusterIP   10.100.71.111   <none>        6379/TCP       2m
+redis-slave           ClusterIP   10.98.115.42    <none>        6379/TCP       70m
 ```
 
+And before we move to the resilience test, let's check how the labels can enable us to target some of the resources of the application:
 
+```bash
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l tier=frontend -o wide
+NAME                                      READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part4-deployment-6695fc768f-4bgrn   1/1     Running   0          3m18s   10.244.3.3   k8s-tuto-worker    <none>           <none>
+hello-part4-deployment-6695fc768f-x9gdh   1/1     Running   0          3m18s   10.244.1.5   k8s-tuto-worker2   <none>           <none>
+hello-part4-deployment-6695fc768f-xkbbg   1/1     Running   0          3m18s   10.244.3.4   k8s-tuto-worker    <none>           <none>
 
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l tier=backend -o wide
+NAME                            READY   STATUS    RESTARTS   AGE    IP           NODE               NOMINATED NODE   READINESS GATES
+redis-master-76fbb9b7bf-wk7hj   1/1     Running   0          2m5s   10.244.3.5   k8s-tuto-worker    <none>           <none>
+redis-slave-5bbbc574d6-sn5bz    1/1     Running   0          97s    10.244.1.6   k8s-tuto-worker2   <none>           <none>
+redis-slave-5bbbc574d6-z98gk    1/1     Running   0          97s    10.244.3.6   k8s-tuto-worker    <none>           <none>
+
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l component=webserver -o wide
+NAME                                      READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+hello-part4-deployment-6695fc768f-4bgrn   1/1     Running   0          5m26s   10.244.3.3   k8s-tuto-worker    <none>           <none>
+hello-part4-deployment-6695fc768f-x9gdh   1/1     Running   0          5m26s   10.244.1.5   k8s-tuto-worker2   <none>           <none>
+hello-part4-deployment-6695fc768f-xkbbg   1/1     Running   0          5m26s   10.244.3.4   k8s-tuto-worker    <none>           <none>
+
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l component=redis-master -o wide
+NAME                            READY   STATUS    RESTARTS   AGE     IP           NODE              NOMINATED NODE   READINESS GATES
+redis-master-76fbb9b7bf-wk7hj   1/1     Running   0          4m13s   10.244.3.5   k8s-tuto-worker   <none>           <none>
+
+tuto@laptop:~/learn-kubernetes$ kubectl get pods -l component=redis-slave -o wide
+NAME                           READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
+redis-slave-5bbbc574d6-sn5bz   1/1     Running   0          4m15s   10.244.1.6   k8s-tuto-worker2   <none>           <none>
+redis-slave-5bbbc574d6-z98gk   1/1     Running   0          4m15s   10.244.3.6   k8s-tuto-worker    <none>           <none>
+```
 
 
 ## 4.5 - Testing the resilience
@@ -601,19 +575,14 @@ The is acutally **no** "Redis Master _Node_", but one of the _Nodes_ hosts the u
 Deleting the _Deployments_ and _Services_ also deletes any running Pods. Use _labels_ to delete multiple resources with one command: run the following commands to delete all _Pods_, _Deployments_, and _Services_:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ kubectl delete deployment -l app=redis
+tuto@laptop:~/learn-kubernetes$ kubectl delete service -l application=hello-part4
+service "hello-part4-service" deleted
+service "redis-master" deleted
+
+tuto@laptop:~/learn-kubernetes$ kubectl delete deployment -l application=hello-part4
+deployment.apps "hello-part4-deployment" deleted
 deployment.apps "redis-master" deleted
 deployment.apps "redis-slave" deleted
-
-tuto@laptop:~/learn-kubernetes$ kubectl delete service -l app=redis
-service "redis-master" deleted
-service "redis-slave" deleted
-
-tuto@laptop:~/learn-kubernetes$ kubectl delete deployment -l app=guestbook
-deployment.apps "frontend" deleted
-
-tuto@laptop:~/learn-kubernetes$ kubectl delete service -l app=guestbook
-service "frontend" deleted
 ```
 
 Query the list of _Pods_ to verify that no _Pods_ are running anymore:
