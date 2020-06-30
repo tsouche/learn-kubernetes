@@ -1,17 +1,22 @@
 # Appendix 0 - deploy a `Kind` cluster
 
 
-### 2.2.2 - deploy the cluster
+## 1 - deploy the cluster
 
-Kind automates the deployment of the cluster: we need to pass only two arguments to kind:
+`KinD` stands for `Kubernetes - in - Docker`: it does not really deploy a Kubernetes cluster on your machine (i.e. it does not deplo Kubernetes on bare metal or on a virtual machine), but it instantiate a Docker container for each *Node* of the cluster, and then all the Kubernetes machinery runs wihtin these *Node containers*: the Master (including the scheduler, the API server, the various Controllers, the DNS and the Network controller, etc etc) and the workers (including Kubelet, local Docker runtime engine, and the Pods...). All these components behave like Docker containers running inside the *Node containers*, and they ignore that they are themselves *containers within containers*. Namely, the Kubernetes binaries are directly reused within `KinD` and instanciated in this very specific setup. Fore more details, see [here](https://kind.sigs.k8s.io/docs/user/quick-start/ "KinD Quick Start landing page").
 
-* the configuration of the cluster: the API's version and the number of nodes. The configuration file called `kind-cluster.yaml` is located in the `./deploy` directory.
+One can say that `KinD` *fakes* a cluster: it is ideal for educational purposes, and it enables to have a cluster running on relatively low spec machines. It also bring a lot of functional testing capabilities prior to shipping an application in production on a *real* cluster.
+
+Interestingly, `KinD`automates the deployment of the cluster and we need to pass very few arguments to get a cluster up and running :
+
+* the configuration of the cluster: the API's version and the number of nodes. The configuration file called `kind-cluster-v2.yaml` is located in the `./cluster-deploy` directory.
+* the annotation indicating that we will use an Ambassador Ingress controller
 * the name of the cluster: Kind can manage multiple clusters simultaneously and it can distinguish them only by their name.
 
 We copy and rename the required original files from `./deploy` to `./sandbox` (so that we can run several times a given step of the tutorial, with always the ability to reset the cluster and start from a fresh state), and then we go in the `sandbox` directory for the following steps:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ cp ./deploy/kind-cluster-v0.2.yaml ./sandbox/kind-cluster.yaml
+tuto@laptop:~/learn-kubernetes$ cp ./deploy/kind-cluster-v2.yaml ./sandbox/kind-cluster.yaml
 tuto@laptop:~/learn-kubernetes$ cp ./deploy/dashboard-v200-recommended.yaml ./sandbox/recommended.yaml
 tuto@laptop:~/learn-kubernetes$ cp ./deploy/dashboard-adminuser.yaml ./sandbox/dashboard-adminuser.yaml
 tuto@laptop:~$ cd sandbox/
