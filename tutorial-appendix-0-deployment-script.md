@@ -10,26 +10,27 @@ One can say that `KinD` *fakes* a cluster: it is ideal for educational purposes,
 Interestingly, `KinD`automates the deployment of the cluster and we need to pass very few arguments to get a cluster up and running :
 
 * the configuration of the cluster: the API's version and the number of nodes. The configuration file called `kind-cluster-v2.yaml` is located in the `./cluster-deploy` directory.
-* the annotation indicating that we will use an Ambassador Ingress controller
+* the annotation indicating that we will use an [Ambassador Ingress controller](https://kind.sigs.k8s.io/docs/user/ingress/ "KinD configuration for an Ambassador Ingress Controller")
 * the name of the cluster: Kind can manage multiple clusters simultaneously and it can distinguish them only by their name.
 
-We copy and rename the required original files from `./deploy` to `./sandbox` (so that we can run several times a given step of the tutorial, with always the ability to reset the cluster and start from a fresh state), and then we go in the `sandbox` directory for the following steps:
+With the `./deploy.sh` script, we copy and rename the required configuration files from `./cluster-deploy` to `./sandbox` (so that we can run several times a given step of the tutorial, with always the ability to reset the cluster and start from a fresh state), and then we use these files to follow three steps steps:
 
 ```bash
-tuto@laptop:~/learn-kubernetes$ cp ./deploy/kind-cluster-v2.yaml ./sandbox/kind-cluster.yaml
-tuto@laptop:~/learn-kubernetes$ cp ./deploy/dashboard-v200-recommended.yaml ./sandbox/recommended.yaml
-tuto@laptop:~/learn-kubernetes$ cp ./deploy/dashboard-adminuser.yaml ./sandbox/dashboard-adminuser.yaml
-tuto@laptop:~$ cd sandbox/
-tuto@laptop:~/learn-kubernetes/sandbox$
+tuto@laptop:~/learn-kubernetes$ cp ./cluster-deploy/kind-cluster-v2.yaml \
+                                   ./cluster-deploy/dashboard-v200-recommended.yaml \
+                                   ./cluster-deploy/dashboard-adminuser.yaml \
+                                   ./sandbox
 ```
 
-From there, we have in the `./sandbox` directory all the files required to deploy the cluster:
+### Step 1: deploy the cluster itself
 
 ```bash
 tuto@laptop:~$ kind create cluster --config ./kind-cluster.yaml --name k8s-tuto
 ```
 
-### 2.2.3 - deploy the dashboard (web GUI)
+### Step 2: deploy the Ingress Controller
+
+### Step 3 - deploy the dashboard (web GUI)
 
 The next step is to deploy the dashboard on top of the Kubernetes clsuter: the dashboard actually runs on the cluster exactly the same way as any other application. You need to use `kubectl` and inject a YAML file in the cluster.
 
@@ -57,7 +58,7 @@ We remove various other element in the string, in order to keep the token only:
 tuto@laptop:~/learn-kubernetes/sandbox$ dashboard_token=${dashboard_token_full#"token: "}
 ```
 
-We save the token in a file called `data_dashboard_token`:
+We save the token in a file called `dashboard_token`:
 
 ```bash
 tuto@laptop:~/learn-kubernetes/sandbox$ echo $dashboard_token > data_dashboard_token
@@ -85,3 +86,4 @@ Thanks to this proxy, you can now access the dashboard service from the laptop:
 ![alt txt](./images/tuto-2-dashboard-overview-1.png "Dashboard - overview of the cluster)")
 
 You will see a login screen: choose the 'Token' option and paste the token in the following field. Here you are!
+
