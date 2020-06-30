@@ -24,10 +24,10 @@ The tutorial will guide you step by step through:
 This tutorial is structured in several documents + many other files:
 
 * various pictures whose name point back to the structure of this document, and which are usefull to understand better the Kubernetes concepts or to illustrate some results to be obtained during the execution of the tutorial;
-* a sub-directory `deploy` contains various configuration files used in the Part 2 for setting up the kubernetes cluster
-* a sub-directory `app-hello` contains the components of a simple 'hello world' application used in Part 3;
-* a sub-directory `app-guestbook` contains the components of a stateful 'guestbook' application used in Part 4;
-* a sub-direcotry `app-cassandra` contains the components of a example of implementation of a cassandra ring ontop kubernetes, used in Part 5.
+* a sub-directory `./cluster-deploy` contains various configuration files used in the Part 2 for setting up the kubernetes cluster
+* a sub-directory `./app-part3` contains the components of a simple 'hello world' application used in Part 3;
+* a sub-directory `./app-part4` contains the components of a stateful 'guestbook' application used in Part 4;
+* a sub-directory `./app-part5` contains the components of a example of implementation of a cassandra ring ontop kubernetes, used in Part 5.
 
 Here are the identified pre-requisites to run this tutorial and actually learn something from this experience:
 
