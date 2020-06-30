@@ -555,6 +555,9 @@ We have deployed an application with a replicated frontend, a replicated Redis S
 ### 4.5.1 - Let's kill a Redis Slave _pod_
 
 
+The first attempt to destabilise the application will be to kill randomly a frontend _Pod_ and see the effect:
+
+
 ### 4.5.2 - Let's kill a Frontend _Pod_
 
 
