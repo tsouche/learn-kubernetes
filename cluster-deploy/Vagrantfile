@@ -1,90 +1,18 @@
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-# This vagrant file will setup n+1 VMs based on Ubuntu server, to deploy a
-# Kubernetes cluster (1 master and 'num_slaves' slaves)
-
-# set cluster dimensions
-num_slaves  = ENV['NUM_SLAVES']     # number of Slave nodes to be generated
-num_slaves = num_slaves.to_i        # converts the string into an integer
-
-# Set configuration variables
-config_VM_shared  = "bootstrap_shared_base.sh"
-config_VM_master  = "bootstrap_master.sh"
-config_VM_slave   = "bootstrap_slave.sh"
-config_cleanup    = "bootstrap_cleanup.sh"
-
-# Set VM caracteristics
-master_cpus = 2                     # Master's CPUs number
-master_mem  = 4096                  # Master's memory size
-slave_cpus  = 1                     # Slaves' CPUs number
-slave_mem   = 1048                  # Slaves' memory size
-start_ip    = "192.168.0.20"
-
-# Generate the token needed for a node to join the cluster
-require 'securerandom'
-random_string1 = SecureRandom.hex
-random_string2 = SecureRandom.hex
-cluster_init_token = "#{random_string1[0..5]}.#{random_string2[0..15]}"
-
+# use Ubuntu Desktop vagrant image from 'fasmat'
 
 Vagrant.configure("2") do |config|
-
-  config.vm.provision "shell", inline: "echo #{ENV['NUM_SLAVES']}"
-  config.vm.provision "shell", inline: "echo #{num_slaves}"
-
-  # Build the base from a clean Ubuntu 18.04 server
-  config.vm.box = "bento/ubuntu-18.04"
-  config.vm.box_version = "201912.03.0"
+  config.vm.box = "fasmat/ubuntu2004-desktop"
+  config.vm.box_version = "20.0606.1"
   config.vm.box_check_update = false
-  config.vm.provision :shell, path: "#{config_VM_shared}"
 
-  # Configure the Master node
-  config.vm.define "master", primary: true do |master|
-    # set the machine name
-    master.vm.hostname = "master"
-    # set the private ip@
-    master_ip = "#{start_ip}0"
-    master.vm.network 'public_network', ip: "#{master_ip}"
-    # dimension the VM
-    master.vm.provider "virtualbox" do |vb|
-      vb.linked_clone = true
-      vb.cpus = master_cpus
-      vb.memory = master_mem
-      #vb.customize ["modifyvm", :id, "--cpuexecutioncap", "70"]
-      vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
-    end
-    # apply the master specific script
-    master.vm.provision :shell, path: "#{config_VM_master}"
+  # dimension the VM
+  config.vm.provider "virtualbox" do |vb|
+      # vb.linked_clone = true
+      vb.cpus = 2
+      vb.memory = 4096
   end
-
-  # Configure the Slave nodes
-  (1..num_slaves).each do |slave_number|
-
-    # set the machine name
-    slave_name = "slave#{slave_number}"
-    # configure each slave machine
-    config.vm.define slave_name do |node|
-      # set the machine name
-      node.vm.hostname = "#{slave_name}"
-      # set the private ip@
-      slave_address = slave_number
-      slave_ip = "#{start_ip}#{slave_number}"
-      node.vm.network 'public_network', ip: "#{slave_ip}"
-      # dimension the VM
-      node.vm.provider 'virtualbox' do |vb|
-        vb.linked_clone = true
-        vb.cpus = slave_cpus
-        vb.memory = slave_mem
-        #vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
-        vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
-      end
-      # apply the master specific script
-      node.vm.provision :shell, path: "#{config_VM_slave}"
-    end
-  end
-
-  # Cleanup temporary files
-  config.vm.provision :shell, path: "#{config_cleanup}"
+  
+  # install tutorial prerequisites
+  config.vm.provision :shell, path: "install.sh"
 
 end

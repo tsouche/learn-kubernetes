@@ -12,39 +12,37 @@
 #   - copy the dashboard YAML file v2.0.0 which is compatible with Kubernetes
 #     v1.18:
 #       https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0/aio/deploy/recommended.yaml
+echo "======================================================================="
+echo " Tutorial \"learn-kubernetes\" - Deploy a K8S-in-Docker cluster"
+echo "======================================================================="
+echo " "
+echo " "
+echo " "
 
-cluster_name="k8s-tuto"
-deploy_directory="./cluster-deploy"
-sandbox_directory="./sandbox"
-cluster_configuration="kind-cluster.yaml"
-dashboard_configuration="recommended.yaml"
-dasbboard_user="dashboard-adminuser.yaml"
-dashboard_token_path="data_dashboard_token"
+echo "======================================================================="
+echo " Cleanup the place"
+echo "======================================================================="
+echo "..."
+
+source ./cluster-deploy/cluster-cleanup.sh
+
+echo "done"
+echo "..."
+echo " "
 
 echo "======================================================================="
 echo " Create/populate the sandbox"
 echo "======================================================================="
 echo "..."
 
-# check if a previous version of kubernetes configuration exist, and remove it
-if [ -d "~/.kube" ]
-then
-  rm -rf ~/.kube
-  mkdir /.kube
-fi
-
 # Create working copy files
-# check if a previous version of the 'working' directory exist, and removes it
-if [ -d $sandbox_directory ]
-then
-    rm -rf $sandbox_directory
-fi
 mkdir $sandbox_directory
-cp $deploy_directory/kind-cluster-v0.2.yaml $sandbox_directory/$cluster_configuration
-cp $deploy_directory/dashboard-v200-recommended.yaml $sandbox_directory/$dashboard_configuration
-cp $deploy_directory/dashboard-adminuser.yaml $sandbox_directory/$dasbboard_user
-
-cd $sandbox_directory
+cp $deploy_directory/$cluster_configuration \
+   $deploy_directory/$ingress_configuration_crd \
+   $deploy_directory/$ingress_configuration_operator \
+   $deploy_directory/$dasbboard_user \
+   $deploy_directory/$dashboard_configuration \
+   $sandbox_directory
 
 echo "done"
 echo "..."
@@ -56,7 +54,7 @@ echo "Installing a 5-nodes Kubernetes cluster (K8s-in-Docker)"
 echo "========================================================================"
 echo "..."
 
-kind create cluster --config $cluster_configuration --name $cluster_name
+kind create cluster --config $sandbox_directory/$cluster_configuration --name $cluster_name
 
 # Wait 5 seconds to give time for the nodes to get active and running
 echo "..... wait 5 seconds ....."
@@ -69,72 +67,40 @@ echo " "
 
 
 echo "========================================================================"
+echo "Deploy an ingress controller"
+echo "========================================================================"
+echo "..."
+
+kubectl apply -f $sandbox_directory/$ingress_configuration_crd
+kubectl apply -n ambassador -f $sandbox_directory/$ingress_configuration_operator
+kubectl wait --timeout=180s -n ambassador --for=condition=deployed ambassadorinstallations/ambassador
+
+echo "..... wait 10 seconds ....."
+sleep 10
+
+echo "done"
+echo "..."
+echo " "
+
+echo "========================================================================"
 echo "Installing Kubernetes Dashboard"
 echo "========================================================================"
 echo "..."
 
 # retrieve the yaml file with the proper version
-kubectl apply -f $dashboard_configuration
-
-echo "done"
-echo "..."
-echo " "
-
-echo "========================================================================"
-echo "Create sample user with the right to access the dashboard"
-echo "========================================================================"
-echo "..."
-
-kubectl apply -f $dasbboard_user
-
+kubectl apply -f $sandbox_directory/$dashboard_configuration
+kubectl apply -f $sandbox_directory/$dasbboard_user
 # Wait 5 seconds to give time for the dashboard to be deployed and the user to
 # be created
 echo "..... wait 5 seconds ....."
-
 sleep 5
-
-echo "done"
-echo "..."
-echo " "
-
-echo "========================================================================"
-echo "Deploy an ingress controller"
-echo "========================================================================"
-echo "..."
-
-kubectl apply -f ./cluster-deploy/ambassador-operator-crds.yaml
-kubectl apply -n ambassador -f ./cluster-deploy/ambassador-operator-kind.yaml
-kubectl wait --timeout=180s -n ambassador --for=condition=deployed ambassadorinstallations/ambassador
-
-echo "done"
-echo "..."
-echo " "
-
 # Grep the secret and use it to login on the browser
-echo "========================================================================"
-echo "Get Token"
-echo "========================================================================"
-echo "..."
-
-#kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
-
 admin_profile=$(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
 dashboard_token_full=$(kubectl -n kubernetes-dashboard describe secret $admin_profile | grep "token: ")
 dashboard_token=${dashboard_token_full#"token: "}
-touch "${dashboard_token_path}"
-echo $dashboard_token > "${dashboard_token_path}"
-
-
-echo "done"
-echo "..."
-echo " "
-
-echo "========================================================================"
-echo "Start kube proxy in another tab of the existing terminal"
-echo "========================================================================"
-echo "..."
-
-gnome-terminal --tab -- kubectl proxy -p 8001
+echo $dashboard_token > $sandbox_directory/$dashboard_token_file_name
+# apply an ingress to the dashboard
+# kubectl apply -f $sandbox_directory/$dashboard_ingress
 
 echo "done"
 echo "..."
@@ -145,10 +111,18 @@ echo "Launch dashboard in a web browser"
 echo "========================================================================"
 echo "..."
 
-xdg-open http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+# Start kube proxy in another tab of the existing terminal"
+gnome-terminal --quiet --tab -- kubectl proxy -p 8001
 
 echo "Here is the token needed to log into the dashboard:"
-cat "${dashboard_token_path}"
+echo $dashboard_token
+echo " "
+echo "You can copy this token in the Text Editor window, and paste it in the"
+echo "browser, as a login token:"
+# open the dashboard login page in a browser
+xdg-open http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+# open the text editor with the token ready to be printed
+gedit --standalone $sandbox_directory/$dashboard_token_file_name &
 
 echo "done"
 echo "..."

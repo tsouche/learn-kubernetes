@@ -16,6 +16,7 @@ The procedure can also be followed on a VM, which make the tutorial more portabl
 
 > Note: Kubernetes evolves constantly as the community keeps enriching/improving/patching it. As a consequence, I experienced  at least two version changes with `Kind`, with for instance the need to keep strictly aligned align the versions of the `dashboard` and of `Kubectl` with the one of `Kind`. And obviously, very little documentation is available to explains the dependencies: trial and error remains the rule...
 
+
 ## 2.2 - Prepare the machine
 
 We assume that you have a Linux laptop and an account with `sudo` privilege.
@@ -28,17 +29,59 @@ In order to make sure that all versions are compatible (it's moving fast) and we
 * `dashboard` version 2.0.0
 * `kubectl` version 1.18.2
 
-The corresponding binary files are available in the `deploy` directory.
+> The corresponding binary files are available in the `cluster-deploy` directory, and the `install.sh` script will do the installation in case you do not want to do it manually.
 
-Alternatively, you can use the Virtual Machine image (which runs with VirtualBox) which I prepared for this tutorial: it is [here]().
-
-### 2.2.1 Deploy the cluster
-
-Previous deployments may have left temporary files, which may interfere with the proper rollout of the cluster. The `deploy.sh` script will first tidy the place and hten deploy the Kubernetes cluster:
+We will run the tutorial in a dedicated directory (which you may easily delete afterward): open a Terminal window, create a `tuto` directory directly on the root and clone the git in this fresh new place:
 
 ```bash
-tuto@laptop:~$ cd learn-kubernetes/
-tuto@laptop:~/learn-kubernetes$ ./deploy.sh
+tuto@laptop:./~$ cd /
+
+tuto@laptop:/$ sudo mkdir tuto
+[sudo] password for tuto:
+
+tuto@laptop:/$ sudo chmod +777 tuto
+
+tuto@laptop:/$ cd tuto
+
+tuto@laptop:/tuto$ git clone https://github.com/tsouche/learn-kubernetes.git
+Cloning into 'learn-kubernetes'...
+remote: Enumerating objects: 303, done.
+remote: Counting objects: 100% (303/303), done.
+remote: Compressing objects: 100% (216/216), done.
+remote: Total 518 (delta 157), reused 217 (delta 81), pack-reused 215
+Receiving objects: 100% (518/518), 97.82 MiB | 19.04 MiB/s, done.
+Resolving deltas: 100% (246/246), done.
+Updating files: 100% (156/156), done.
+
+tuto@laptop:/tuto$ cd learn-kubernetes
+
+tuto@laptop:/tuto/learn-kubernetes$
+```
+
+**Here you are:** you now have everything need to run this tutorial :smile:.
+
+
+### 2.3 Deploy the cluster
+
+
+Previous deployments may have left temporary files, which may interfere with the proper rollout of the cluster. Run `deploy.sh` script in a the terminal window, and it will first tidy the place and then deploy the Kubernetes cluster. The script will print the following text as it goes throught the cluster rollout process:
+
+```bash
+tuto@laptop:/tuto/learn-kubernetes$ ./deploy.sh
+=======================================================================
+ Tutorial "learn-kubernetes" - Deploy a K8S-in-Docker cluster
+=======================================================================
+
+
+
+=======================================================================
+ Cleanup the place
+=======================================================================
+...
+Deleting cluster "k8s-tuto" ...
+done
+...
+
 =======================================================================
  Create/populate the sandbox
 =======================================================================
@@ -52,7 +95,7 @@ Installing a 5-nodes Kubernetes cluster (K8s-in-Docker)
 ...
 Creating cluster "k8s-tuto" ...
  ✓ Ensuring node image (kindest/node:v1.18.2) 🖼
- ✓ Preparing nodes 📦 📦 📦 📦 📦
+ ✓ Preparing nodes 📦 📦 📦 📦
  ✓ Writing configuration 📜
  ✓ Starting control-plane 🕹️
  ✓ Installing CNI 🔌
@@ -63,8 +106,27 @@ You can now use your cluster with:
 
 kubectl cluster-info --context kind-k8s-tuto
 
-Thanks for using kind! 😊
+Have a nice day! 👋
 ..... wait 5 seconds .....
+done
+...
+
+========================================================================
+Deploy an ingress controller
+========================================================================
+...
+customresourcedefinition.apiextensions.k8s.io/ambassadorinstallations.getambassador.io created
+namespace/ambassador created
+configmap/static-helm-values created
+serviceaccount/ambassador-operator created
+clusterrole.rbac.authorization.k8s.io/ambassador-operator-cluster created
+clusterrolebinding.rbac.authorization.k8s.io/ambassador-operator-cluster created
+role.rbac.authorization.k8s.io/ambassador-operator created
+rolebinding.rbac.authorization.k8s.io/ambassador-operator created
+deployment.apps/ambassador-operator created
+ambassadorinstallation.getambassador.io/ambassador created
+ambassadorinstallation.getambassador.io/ambassador condition met
+..... wait 10 seconds .....
 done
 ...
 
@@ -86,35 +148,9 @@ clusterrolebinding.rbac.authorization.k8s.io/kubernetes-dashboard created
 deployment.apps/kubernetes-dashboard created
 service/dashboard-metrics-scraper created
 deployment.apps/dashboard-metrics-scraper created
-done
-...
-
-========================================================================
-Create sample user with the right to access the dashboard
-========================================================================
-...
 serviceaccount/admin-user created
 clusterrolebinding.rbac.authorization.k8s.io/admin-user created
 ..... wait 5 seconds .....
-done
-...
-
-========================================================================
-Get Token
-========================================================================
-...
-done
-...
-
-========================================================================
-Start kube proxy in another tab of the existing terminal
-========================================================================
-...
-# _g_io_module_get_default: Found default implementation gvfs (GDaemonVfs) for ‘gio-vfs’
-# _g_io_module_get_default: Found default implementation dconf (DConfSettingsBackend) for ‘gsettings-backend’
-# watch_fast: "/org/gnome/terminal/legacy/" (establishing: 0, active: 0)
-# unwatch_fast: "/org/gnome/terminal/legacy/" (active: 0, establishing: 1)
-# watch_established: "/org/gnome/terminal/legacy/" (establishing: 0)
 done
 ...
 
@@ -123,7 +159,10 @@ Launch dashboard in a web browser
 ========================================================================
 ...
 Here is the token needed to log into the dashboard:
-eyJhbGciOiJSUzI1NiIsImtpZCI6IjBuTXF1dDRvUGFFUVJ4RVBUN0lOVXlQak1xNl8xQ0kzME1IRzJRdFA5U00ifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLW1mcHdwIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI3OTMyOTZmNy1jOTliLTQ1YjItYTIwNS04NGZmOGIzMzhlZWQiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.yiPhIVovxoAS7hf8rPMpExw3ODs7Cp6L2nQHZRKbwjKLhPcckAOXXfKUoRNFzFgy0x7FX2r-K-BGlIaAMhPbaW9RoI_cqXKWQoKTfuGQMSSwr5wVx4keE8elrznL1g7kfA5YrXjDPdjGptf06jfUFeXB-f6ohTLmhVxk0PLUeCA7GA_Y2BzkqUp0cGLX79zuHkBcGinBeN66G7frGlJQoCROT7JT7F0EVZ-YxiSBbX7prnfUY8d1d7KHFAgEWCzlZvXE7p2z43fxU0NfaI0cb6Ppy5n2b8BJQ0mMURL0reRlk_wTBmqnSTuDIIO5W6-6xayj4DLJ1eoyL33wijehpQ
+eyJhbGciOiJSUzI1NiIsImtpZCI6IlVOMUNMWVRRcnNGci01ZW11MzFuZTZaNi14REluYWdHZTBvVmVoMlh6VDAifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLWpxZ25kIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiIwMWZlNTM2Ny1lMWYxLTQyNzEtOGZjZi05OGUxMzJjMDg1MmUiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.T1NtCO7rc4RSnPDFg-MbUvArALc3YMI27kk7XkK_02vI1m9jvFw4C2IYg9bvMYsJa6t0dLWycDJj6-YiExJcsbwgAk8XbPZmlMdW751R0vdRQNlv5kI7wAS6SoMq_pN0NQ9AO9unovmIriJSzMKA1qI5mtr7zw7FpcqUauRLqi1pLA50QzUQNrwZGlDCvupFwnu0tNc9CSUHSSdxvJLCjAkn0meiYTJOAnJvIOKuHq5GAJHZDvbD93HfbIZlNulzd9C3XYUHomt2U3ufRjyx5O_vuN0Iy2QMRpfyKyyGA3rNTZ2ku3sZhs6vvL1gHkLOeXr-Cs8f4hXd2jKHaFOCwQ
+
+You can copy this token in the Text Editor window, and paste it in the
+browser, as a login token:
 done
 ...
 
@@ -132,24 +171,25 @@ The END
 ========================================================================
 ```
 
-Look at the bottom of the `deploy.sh` script output: a *token* is displayed (the very very long sequence of characters, starting here with `eyJhbGciOiJS...` and finishing with `...33wijehpQ`): this token is *unique* (i.e. it will change everytime you will start up a new cluster) so you need to **copy** the one which will be displayed when you run the `deploy.sh` script on your machine.
+While printing this message and rolling out the cluster, the script will have:
 
-The `deploy.sh` script launched automaticaly:
-1. another tab in the terminal, which runs the `kubectl proxy`: this proxy exposes the Kubernetes cluster towards the local machine. This means that, thanks to this proxy, you will be able to acces the API server and query requests to the Kubernetes APIs (via a browser or via `kubectl`).
-```
-Starting to serve on 127.0.0.1:8001
-```
-1. a browser window pointing the dashboard URL: it may not look ok at the beginning since the cluster may take few more seconds to get everything up and running, but very soon the API server will be able to answer the browser request, and you will see this.
-  ![alt txt](./images/tuto-2-dashboard-login-page.png "Here is the Dashboard login page")
+* launched another tab in the terminal window, which runs the `kubectl proxy`: this proxy exposes the Kubernetes cluster towards the local machine and it is critical to enable you to run commands towards the Kubernetes cluster. This means that, thanks to this proxy, you will be able to acces the API server and query requests to the Kubernetes APIs (via a browser or via `kubectl`).
+![alt txt](./images/tuto-2-kubernetes-proxy.png "The Kubernetes proxy running in a new tab")
 
-  You now need to paste the *token* which you copied from the script output:
-  ![alt txt](./images/tuto-2-dashboard-login-enter-token.png "Paste the token")
+* launched a text editor showing a long and meaningless lsit of characters: it is the ***Token*** (you should pronounce it like 'my precious...' in a famous Saga...). Copy the _Token_ (<kbd>Ctl+C</kbd>) preciously as it is **unique**and it is the password which you need to log into the _Dashboard_. Once copied, you can close this window.
+![alt txt](./images/tuto-2-text-editor-token.png "Token displayed in the Text Editor window")
+> Note: in case you missed the token and you can't find it anymore, it was saved in a text file called `dashboard-token` in the `sandbox` directory. This `sandbox` directory is a temporary working space, and it is deleted when you launch the `cleanup.sh` script.
 
-  And ***here you are*** : you are logged into the Dashboard!!!
-  ![alt txt](./images/tuto-2-dashboard-logged-in.png "You are logged in!")
+* launched a browser window showing the **Dashboard**: it may look like this at the beginning, waiting for the whole process to complete in the background.
+![alt txt](./images/tuto-2-dashboard-not-yet-ready.png "The Dashboard process is not yet ready: refresh the page")
+You only have to wait a bit and refresh the page and it soon should like this:
+![alt txt](./images/tuto-2-dashboard-login-page.png "Here is the Dashboard login page")
+You now need to paste the *token* which you copied from the script output:
+![alt txt](./images/tuto-2-dashboard-login-enter-token.png "Paste the token")
+And ***here you are*** : you are logged into the Dashboard!!!
+![alt txt](./images/tuto-2-dashboard-logged-in.png "You are logged in!")
 
-You can now control that the cluster is accessible from `kubectl` and that the Nodes have been deployed (in a `kind` way):
-
+You can now control the cluster since the _Nodes_ have been deployed by `Kind` and it is accessible from `kubectl` thanks to the proxy.
 
 
 ## 2.3 - Conclusion of the `kind` cluster deployment
