@@ -2,10 +2,10 @@
 
 
 This tutorial mixes elements from the official Kubernetes site 'get started' sections (many of these), but also from Dada's blog (specifically for setting up the Kubernetes clusters on VMs running on a laptop) and other blogs. Main links are:
-    [https://kubernetes.io/docs/tutorials/kubernetes-basics/](https://kubernetes.io/docs/tutorials/kubernetes-basics/)
-    [https://www.dadall.info/article658/preparer-virtualbox-pour-kubernetes](https://www.dadall.info/article658/preparer-virtualbox-pour-kubernetes)
-    [https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/)
-    [https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md](https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md)
+* [https://kubernetes.io/docs/tutorials/kubernetes-basics/](https://kubernetes.io/docs/tutorials/kubernetes-basics/)
+* [https://www.dadall.info/article658/preparer-virtualbox-pour-kubernetes](https://www.dadall.info/article658/preparer-virtualbox-pour-kubernetes)
+* [https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/)
+* [https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md](https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md)
 
 
 
