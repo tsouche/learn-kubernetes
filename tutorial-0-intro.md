@@ -39,4 +39,4 @@ Also, you will find several resources by cloning the git repository:
 `git clone https://github.com/tsouche/learn-kubernetes.git`
 
 
-This is it. Nothing else is needed... except the desire to learn :-)
+This is it. Nothing else is needed... except the desire to learn :smile:
