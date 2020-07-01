@@ -166,10 +166,14 @@ We know that an application is cut in small pieces (micro-services), and that ea
 
 This requires that we explain a _Deployment_, a _Service_ and an _Ingress_:
 
-![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-3.png "Expose a micro-service running on Kubernetes")
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-1.png "Expose a micro-service running on Kubernetes")
 
-The concept is that _Pods_ are grouped in order to have multiple replicas of the same piece of software to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ (or the underlying _Node_) would fail. Such a group is very often a `ReplicaSet` (there are several way to regroup _Pods_ but we will not enter into too much details here and now), and is managed by a _Deployment_. Namely the Deployment is told the _Desired State_ (let's say that we want 3 replicas), knowns  and should indicate that we need _n_ replicas, and it will manage all actions in order to de^moy the _n_ Pods in order 
+* _Pods_ are grouped in order to have one or multiple replicas of the same piece of software (to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ (or the underlying _Node_) would fail).
+* To reach these _Pods_ and make it visible from the whole cluster and even outside, we need to activate a _Service_ which will expose an IP address and a port to the cluster, and route the incoming traffic to the _Pods_: other applications will then be able to reach the _Pods_.
+* The _Deployment_ is focused on how the Pods should be deployed (affinity, anti-affinity, minimum resources available, etc etc). The _Service_ is focused on how the group od _Pods_ should be reached.
+* Finally, when we want to make the _Service_ publicly visible from the outside of the cluster, reachable via a known URL, then you need to activate an _Ingress_: its duty is to establish a public routing/loadbalancing/... from the outside to the application.
 
+So let's drill a bit into these mechanisms.
 
 #### 2.7.1 - the *Pod*, atomic unit of an application
 
@@ -178,7 +182,7 @@ When you deploy an application on a cluster, Kubernetes creates a **Pod** to hos
 * Networking, as a unique **cluster IP address**
 * Information about how to run each container, such as the container image version or specific ports to use...
 
-![alt txt](./images/tuto-1-pod-overview-3.png "a typical Pod")
+![alt txt](./images/tuto-1-pod-overview-1.png "a typical Pod")
 
 A Pod models an application-specific "logical host" and can contain different application containers which are relatively tightly coupled. For example, a Pod might include both the container with your Node.js app as well as a different container that feeds the data to be published by the Node.js webserver. The containers in a Pod share an IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.
 
@@ -190,6 +194,8 @@ Each Pod is tied to the Node where it is scheduled, and remains there until term
 
 
 ### 2.7.2 - Deployment
+
+Such a group is very often a `ReplicaSet` (there are several way to regroup _Pods_ but we will not enter into too much details here and now), and is managed by a _Deployment_. Namely the Deployment is told the _Desired State_ (let's say that we want 3 replicas), knowns  and should indicate that we need _n_ replicas, and it will manage all actions in order to de^moy the _n_ Pods in order 
 
 A _Deployment_ provides declarative updates for _Pods_ and _ReplicaSets_. As explained above about Controllers, the principle is to describe a **desired state** in a _Deployment_, and the _Deployment Controller_ changes the _actual state_ to the _desired state_ (scale up, scale down, upgrade version...) at a controlled rate. You can define Deployments to create new ReplicaSets (i.e. group of _Pods_ managed by the Master), or to remove existing Deployments and release all their resources (to make them available to other _Deployments_).
 
