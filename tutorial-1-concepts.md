@@ -180,7 +180,7 @@ When you deploy an application on a cluster, Kubernetes creates a **Pod** to hos
 
 A Pod models an application-specific "logical host" and can contain different application containers which are relatively tightly coupled. For example, a Pod might include both the container with your Node.js app as well as a different container that feeds the data to be published by the Node.js webserver. The containers in a Pod share an IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.
 
-![alt txt](./images/tuto-1-pod-overview-2.png "various Pods")
+![alt txt](./images/tuto-1-pod-overview-2.png "The logical path from a Pod, to the Service to the Ingress")
 
 Pods are the **atomic unit** on the Kubernetes platform. When we create a Deployment on Kubernetes, that Deployment creates Pods with containers inside them (as opposed to creating containers directly).
 
@@ -188,6 +188,8 @@ Each Pod is tied to the Node where it is scheduled, and remains there until term
 
 
 ### 2.7.2 - Deployment
+
+![alt txt](./images/tuto-1-pod-overview-1.png "A Deployment of several Pods, exposed by a Service towards an Ingress")
 
 
 
