@@ -3,7 +3,11 @@
 
 ## 2.1 - Introduction
 
-We will describe here the setting up of a Kubernetes cluster using `KinD`, i.e. simulating each _Node_ with a Docker container, and faking the behaviour of the Kubernetes cluster by having all the Kubernetes native components - the Master's components, the kubelet... - which are themselves Docker containers - to run on the _Node containers_ and lettim them believe that htey are running on a server. The Kubernetes componants actually run as *Docker containers inside the Node containers* using [`DinD`](https://github.com/docker-library/docs/tree/master/docker "DinD reference website") (Docker-in-Docker). `KinD` does it so well that the Pods have no clue that their containers are running directly on the host: they are actually being proxied by the *Containers-behaving-as-Nodes*: in this way, Kubelet sees the Master exactly the same way as if it were running on a *true* Node (i.e. a VM or on bare metal), and the API servers exposes exactly the same APIs as a genuine cluster (`KinD` is certified *K8s compliant* by the CNCF).
+We will describe here the setting up of a Kubernetes cluster using `KinD`, i.e. simulating each _Node_ with a Docker container, and faking the behaviour of the Kubernetes cluster by having all the Kubernetes native components - the Master's components, the kubelet... - which are themselves Docker containers - to run on the _Node containers_ and letting them believe that htey are running on a server.
+
+![alt txt](./images/tuto-2-kubernetes-in-docker.png "Overview of KinD")
+
+The Kubernetes componants actually run as *Docker containers inside the Node containers* using [`DinD`](https://github.com/docker-library/docs/tree/master/docker "DinD reference website") (Docker-in-Docker). `KinD` does it so well that the Pods have no clue that their containers are running directly on the host: they are actually being proxied by the *Containers-behaving-as-Nodes*: in this way, Kubelet sees the Master exactly the same way as if it were running on a *true* Node (i.e. a VM or on bare metal), and the API servers exposes exactly the same APIs as a genuine cluster (`KinD` is certified *K8s compliant* by the CNCF).
 
 We provide two scripts which automate the full procedure:
 
