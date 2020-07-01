@@ -3,69 +3,23 @@
 
 ## 2.1 - Introduction
 
-We will describe here the setting up of a Kubernetes cluster using `KinD`, i.e. simulating each _Node_ with a Docker container, and faking the behaviour of the Kubernetes cluster by having all the Kubernetes native components - the Master's components, the kubelet... - which are themselves Docker containers - to run on the _Node containers_ and letting them believe that htey are running on a server.
+We will describe here the setting up of a Kubernetes cluster using `KinD`, i.e. simulating each _Node_ with a Docker container, and faking the behaviour of the Kubernetes cluster by having all the Kubernetes native components - the Master's components, the kubelet... - which are themselves Docker containers - to run inside the _Node containers_ and letting them believe that they are running on a server.
 
 ![alt txt](./images/tuto-2-kubernetes-in-docker.png "Overview of KinD")
 
-The Kubernetes componants actually run as *Docker containers inside the Node containers* using [`DinD`](https://github.com/docker-library/docs/tree/master/docker "DinD reference website") (Docker-in-Docker). `KinD` does it so well that the Pods have no clue that their containers are running directly on the host: they are actually being proxied by the *Containers-behaving-as-Nodes*: in this way, Kubelet sees the Master exactly the same way as if it were running on a *true* Node (i.e. a VM or on bare metal), and the API servers exposes exactly the same APIs as a genuine cluster (`KinD` is certified *K8s compliant* by the CNCF).
+The Kubernetes componants actually run as *Docker containers inside the Node containers* using [`DinD`](https://github.com/docker-library/docs/tree/master/docker "DinD reference website") (Docker-in-Docker). `KinD` does it so well that the Pods have no clue that they are running directly on the host: in this way, Kubelet sees the Master exactly the same way as if it were running on a *true Node* (i.e. a VM or on bare metal), and the API servers exposes exactly the same APIs as a genuine cluster (`KinD` is certified *K8s compliant* by the CNCF).
 
 We provide two scripts which automate the full procedure:
 
-1. to install the libraries required for this tutorial (`git`, `curl`, `Docker`, `KinD`, `kubectl`) setting up the cluster
-1. to deploy the cluster and the dashboard.
+* `deploy.sh`.will deploy a brand new `KinD` cluster and all needed add-ons
+* `cleanup.sh` will tidy the place and remove the `KinD` cluster.
 
-These scripts are in the main directory: `install.sh` and `deploy.sh`. We will now describe the steps gathered in these two scripts, so that you can understand the procedure to setup a `KinD` cluster.
-
-The procedure can also be followed on a VM, which make the tutorial more portable: we will describe later in this appendix the setup of such a VM, using Vagrant and VirtualBox: the resulting image can then run on a windows machine.
+These scripts are in the main directory. We will now describe the steps gathered in these two scripts, so that you can understand the procedure to setup a `KinD` cluster. You can also run this procedure inside a VM, which make the tutorial more portable.
 
 > Note: Kubernetes evolves constantly as the community keeps enriching/improving/patching it. As a consequence, I experienced  at least two version changes with `KinD`, with for instance the need to keep strictly aligned align the versions of the `dashboard` and of `Kubectl` with the one of `KinD`. And obviously, very little documentation is available to explains the dependencies: trial and error remains the rule...
 
 
-## 2.2 - Prepare the machine
-
-We assume that you have a Linux laptop and an account with `sudo` privilege.
-
-In order to make sure that all versions are compatible (it's moving fast) and we do not suffer side effects due to version changes, we force the versions for each component. Here are the verions used for this tutorial:
-
-* `GO` version 1.14.2 and later (language on which `KinD` is developped)
-* `Docker` of version 18.9 minimum
-* `kubectl` version 1.18.2
-* `KinD` version 0.8.1 (which runs Kubernetes version 1.18.2)
-* `dashboard` version 2.0.0
-
-> The corresponding binary files are available in the `cluster-deploy` directory, and the `install.sh` script will do the installation in case you do not want to do it manually.
-
-We will run the tutorial in a dedicated directory (which you may easily delete afterward): open a Terminal window, create a `tuto` directory directly on the root and clone the git in this fresh new place:
-
-```bash
-tuto@laptop:~$ cd /
-
-tuto@laptop:/$ sudo mkdir tuto
-[sudo] password for tuto:
-
-tuto@laptop:/$ sudo chmod +777 tuto
-
-tuto@laptop:/$ cd tuto
-
-tuto@laptop:/tuto$ git clone https://github.com/tsouche/learn-kubernetes.git
-Cloning into 'learn-kubernetes'...
-remote: Enumerating objects: 303, done.
-remote: Counting objects: 100% (303/303), done.
-remote: Compressing objects: 100% (216/216), done.
-remote: Total 518 (delta 157), reused 217 (delta 81), pack-reused 215
-Receiving objects: 100% (518/518), 97.82 MiB | 19.04 MiB/s, done.
-Resolving deltas: 100% (246/246), done.
-Updating files: 100% (156/156), done.
-
-tuto@laptop:/tuto$ cd learn-kubernetes
-
-tuto@laptop:/tuto/learn-kubernetes$
-```
-
-**Here you are:** you now have everything need to run this tutorial :smile:.
-
-
-### 2.3 Deploy the cluster
+### 2.2 Deploy the cluster
 
 
 Previous deployments may have left temporary files, which may interfere with the proper rollout of the cluster. Run `deploy.sh` script in a the terminal window, and it will first tidy the place and then deploy the Kubernetes cluster. The script will print the following text as it goes throught the cluster rollout process:
@@ -196,45 +150,26 @@ And ***here you are*** : you are logged into the Dashboard!!!
 You can now control the cluster since the _Nodes_ have been deployed by `KinD` and it is accessible from `kubectl` thanks to the proxy.
 
 
-## 2.3 - Conclusion of the `KinD` cluster deployment
+## 2.3 - Running the `KinD` cluster on a VM
 
-Thats's it: you have a cluster running, which you can access with `kubectl`. It simulates 5 nodes, and `KinD` spoofs Kubernetes: the various containers behave as Nodes and Pods and interact via the API server, with `kubelet`. The fact that the topology is now 100% logical (topology between containers) and not physical (the containers do not run on different machines) is not visible from the various Kubernetes components. The containers respect the APIs.
+This scenario comes from the constraints of a colleague who could not run the tutorial on a Linux laptop... because he does not have a computer running Linux (*he's a VP, not a developper: his laptop is mainly used to show Powerpoint...*).
 
-The interest here is both simplicity and footprint:
-
-* simplicity snice it takes very few steps to get a full cluster up and running, without having to bother about the network and other miscellaneous details...
-* footprint because it takes just one *kindest* container per node to simulate the whole underlying infrastructure, and you then get a light-weight Kubernetes.
-
-To me, this is more than just a spoof: `KinD` could bring the steps towards a '100% containers' Kubernetes, where the whole infrastructure would ONLY manage containers, and not anymore rotate around servers or VMs. To be continued...
-
-```bash
-tuto@laptop:/tuto/learn-kubernetes$ kind get clusters
-k8s-tuto
-
-tuto@laptop:/tuto/learn-kubernetes$ kubectl get nodes
-NAME                     STATUS   ROLES    AGE   VERSION
-k8s-tuto-control-plane   Ready    master   24m   v1.18.2
-k8s-tuto-worker          Ready    <none>   24m   v1.18.2
-k8s-tuto-worker2         Ready    <none>   24m   v1.18.2
-k8s-tuto-worker3         Ready    <none>   24m   v1.18.2
-k8s-tuto-worker4         Ready    <none>   24m   v1.18.2
-```
-
-## 2.4 - Running the `KinD` cluster on a VM
-
-This scenario comes from the constraints of a colleague who could not run the tutorial on a Linux laptop... because he does not have a computer running Linux (*he's a VP, not a developper: his laptop is running MS Office...*).
-
-I did not want to bother with porting the whole thing onto Windows, and I am really not familiar with coding on windows: looking for a *simple* way to meet his need, I finally resolved into setting up a VM with all the prerequisites (Ubuntu desktop, docker, GO, KinD, Kubectl...).
+I did not want to bother with porting the whole thing onto Windows, and I am really not familiar with coding on windows: looking for a *simple* way to meet his need, I finally resolved into setting up a VM with all the prerequisites (Ubuntu desktop, docker, GO, KinD, Kubectl...). I guess that it could get even simpler with Docker Desktop, but I will look into this option in a later version of this tutorial *(and obviously help is more than welcome!!!)*.
 
 I initially went the Vagrant way: however, for some reason, I felt it difficult to work out with a desktop linux, while everything works fine with server versions). So I eventually decided to setup the VM with VirtualBox, export the OVA VM image and make it available to students so that they can run the tutorial *as if they were running `KinD` on Linux*.
 
-The VM was set:
-* from a Ubuntu 20.04 LTS base OS
-* with docker 19.03
-* with `GO` version 1.14.2 or later
-* with `KinD` version 0.8.1
-* with `kubectl` version 1.18.2
+The VM was set from a Ubuntu 20.04 LTS base OS, I created the `/tuto` directory and cloned the `learn-kubernetes` git repository there, thus creating the `/tuto/learn-kubernetes` directory.
 
-and I cloned the 'learn-kubernetes' tutorial into the `~/learn-kubernetes` directory.
+As of this step, it is then very similar with the Linux case: you only have to deploy a cluster with `./deploy.sh`.
 
-As of this step, it is then very similar with the Part 2: you only have to deploy a cluster with `KinD` (with the `deploy.sh` script).
+
+## Conclusion
+
+Thats's it: you have a cluster running, which you can access with `kubectl`. It simulates 3 worker nodes, and `KinD` spoofs Kubernetes: the various containers behave as Nodes, and interact via the API server, with `kubelet`. The fact that the topology is now 100% logical (Docker topology between containers) and not physical (the containers do not run on different virtual or physical machines) is not visible from the various Kubernetes components.
+
+The interest here is both simplicity and footprint:
+
+* simplicity since it takes very few steps and time to get a full cluster up and running, without having to bother about the network and other miscellaneous details...
+* footprint because it takes just one `kindest` container per node to simulate the whole underlying infrastructure, and you then get a very light-weight Kubernetes cluster.
+
+> To me, this is more than just a spoof: `KinD` could bring the steps towards a '100% containers' Kubernetes, where the whole infrastructure would ONLY manage containers, and not anymore rotate around servers or VMs. To be continued...
