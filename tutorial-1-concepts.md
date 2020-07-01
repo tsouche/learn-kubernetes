@@ -168,7 +168,7 @@ This requires that we explain a _Deployment_, a _Service_ and an _Ingress_:
 
 ![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-2.png "Expose a micro-service running on Kubernetes")
 
-* _Pods_ are grouped in order to have one or multiple replicas of the same piece of software (to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ (or the underlying _Node_) would fail).
+* _Pods_ are grouped in a _Deployment_, in order to have one or multiple replicas of the same piece of software (to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ - or the underlying _Node_- would fail).
 * To reach these _Pods_ and make it visible from the whole cluster and even outside, we need to activate a _Service_ which will expose an IP address and a port to the cluster, and route the incoming traffic to the _Pods_: other applications will then be able to reach the _Pods_.
 * The _Deployment_ is focused on how the Pods should be deployed (affinity, anti-affinity, minimum resources available, etc etc). The _Service_ is focused on how the group od _Pods_ should be reached.
 * Finally, when we want to make the _Service_ publicly visible from the outside of the cluster, reachable via a known URL, then you need to activate an _Ingress_: its duty is to establish a public routing/loadbalancing/... from the outside to the application.
@@ -212,10 +212,11 @@ The following are typical use cases for Deployments:
 
 ### 2.7.3 - Service
 
-Once the Pods are organised into a group, managed by a _Deployment_, the group should be exposed to the rest of the cluster so that another application can typically consumme the APIs. This is the job of the _Service_:
+Kubernetes _Pods_ are mortal. They are born and when they die, they are not resurrected. If you use a _Deployment_ to run your app, it can create and destroy _Pods_ dynamically in order to meet the objectives as describe in the _Desired state_. Each _Pod_ gets its own IP address, however in a _Deployment_, the set of _Pods_ running in one moment in time could be different from the set of _Pods_ running that application a moment later.
 
+This leads to a problem: if some set of _Pods_ (call them “backends”) provides functionality to other _Pods_ (call them “frontends”) inside your cluster, how do the frontends find out and keep track of which IP address to connect to, so that the frontend can use the backend part of the workload? The answer is "setup a _Service-".
 
-
+The _Service_ will expose a _Deployment_ to the cluster ENDPOINT (the IP address which is shared for all services) and a port dedicated to each _Deployment_ (most often a NODE_PORT) : the _Service_ will forward and load-balance a request reaching ENDPOINT:NODE_PORT towards the _Pods_ which belong to the _Deployment_. You will see how to do it in Part 3 of the tutorial.
 
 ### 2.7.4 - Ingress
 
