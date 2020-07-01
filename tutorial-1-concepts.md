@@ -159,7 +159,17 @@ Let's emntion few add-ons
   A cluster-level logging mechanism is responsible for saving container logs to a central log store with search/browsing interface.
 
 
-### 2.7 - Pods
+### 2.7 - How an application 'works' on Kubernetes
+
+
+We know that an application is cut in small pieces (micro-services), and that each small piece is instantiated with a _Pod_. We still need to understand how the _Pods_ are running on the _Nodes_, and what other Kubernetes mechanisms are actioned in order to get an application running.
+
+This requires that we explain a _Deployment_, a _Service_ and an _Ingress_:
+
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress.png "Expose a micro-service running on Kubernetes")
+
+
+#### 2.7.1 - the *Pod*, atomic unit of an application
 
 When you deploy an application on a cluster, Kubernetes creates a **Pod** to host your application instance. A Pod is a Kubernetes abstraction that represents a group of one or more application containers, and some shared resources for those containers. Those resources include:
 * Shared storage, as **Volumes**
@@ -175,6 +185,20 @@ A Pod models an application-specific "logical host" and can contain different ap
 Pods are the **atomic unit** on the Kubernetes platform. When we create a Deployment on Kubernetes, that Deployment creates Pods with containers inside them (as opposed to creating containers directly).
 
 Each Pod is tied to the Node where it is scheduled, and remains there until termination (according to restart policy) or deletion. In case of a Node failure, identical Pods are scheduled on other available Nodes in the cluster.
+
+
+### 2.7.2 - Deployment
+
+
+
+### 2.7.3 - Service
+
+
+
+### 2.7.4 - Ingress
+
+
+
 
 ## Conclusion
 
