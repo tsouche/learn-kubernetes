@@ -166,7 +166,7 @@ We know that an application is cut in small pieces (micro-services), and that ea
 
 This requires that we explain a _Deployment_, a _Service_ and an _Ingress_:
 
-![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-1.png "Expose a micro-service running on Kubernetes")
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-2.png "Expose a micro-service running on Kubernetes")
 
 * _Pods_ are grouped in order to have one or multiple replicas of the same piece of software (to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ (or the underlying _Node_) would fail).
 * To reach these _Pods_ and make it visible from the whole cluster and even outside, we need to activate a _Service_ which will expose an IP address and a port to the cluster, and route the incoming traffic to the _Pods_: other applications will then be able to reach the _Pods_.
@@ -195,10 +195,9 @@ Each Pod is tied to the Node where it is scheduled, and remains there until term
 
 ### 2.7.2 - Deployment
 
-Such a group is very often a `ReplicaSet` (there are several way to regroup _Pods_ but we will not enter into too much details here and now), and is managed by a _Deployment_. Namely the Deployment is told the _Desired State_ (let's say that we want 3 replicas), knowns  and should indicate that we need _n_ replicas, and it will manage all actions in order to de^moy the _n_ Pods in order 
-
-A _Deployment_ provides declarative updates for _Pods_ and _ReplicaSets_. As explained above about Controllers, the principle is to describe a **desired state** in a _Deployment_, and the _Deployment Controller_ changes the _actual state_ to the _desired state_ (scale up, scale down, upgrade version...) at a controlled rate. You can define Deployments to create new ReplicaSets (i.e. group of _Pods_ managed by the Master), or to remove existing Deployments and release all their resources (to make them available to other _Deployments_).
-
+A _Deployment_ will enable you to instantiate a group of _Pods_ in order to garantee that the application will meet the expected performance, availability, resilience... Namely, you will describe to the Deployment the _Desired State_ (let's say that we want 3 replicas, all on different _Nodes_ and with enough resources), and it will trigger various Controllers and the Scheduler in order to actually deploy the Pod on as many _Nodes_ as required to meet the target. 
+ 
+By changing the description of the _Desired state_, you also trigger the _Deployment Controller_ to changes the _Actual state_ to get the new _Desired state_ (scale up, scale down, upgrade version...) at a controlled rate. Also, if you instruct the _Deployment_ so, it will remove existing _Pods_ and release all their resources (to make them available to other _Deployments_).
 
 ![alt txt](./images/tuto-1-pod-overview-1.png "A Deployment of several Pods, exposed by a Service towards an Ingress")
 
@@ -213,7 +212,7 @@ The following are typical use cases for Deployments:
 
 ### 2.7.3 - Service
 
-Once the Pods are organised into a group, managed by a Deployment, the group can be linked to a Service 
+Once the Pods are organised into a group, managed by a _Deployment_, the group should be exposed to the rest of the cluster so that another application can typically consumme the APIs. This is the job of the _Service_:
 
 
 
@@ -225,4 +224,4 @@ Once the Pods are organised into a group, managed by a Deployment, the group can
 
 ## Conclusion
 
-That's is for concepts: you know enough on the paper and it's high time to get into practise: so let's jump to [Part 2](.//tutorial-2-create-cluster.md "Tutorial Part 2: Create teh Kubernetes Cluster").
+That's is for concepts: you know enough on the paper and it's high time to get into practise: so let's jump to **[Part 2](.//tutorial-2-create-cluster.md "Tutorial Part 2: Create the Kubernetes Cluster")**.
