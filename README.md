@@ -31,6 +31,6 @@ sudo rm -rf /tuto && sudo mkdir /tuto && sudo chmod +777 /tuto && cd /tuto && \
     cd learn-kubernetes
 ```
 
-In case you see it usefull, [this shell script](./prepare.sh "Create a directory and download the tutorial into it") will do the job for you: just run it in a terminal window.
+In case you see it usefull, [`prepare.sh`](https://github.com/tsouche/learn-kubernetes/blob/master/prepare.sh "Download 'prepare.sh'") will do the job for you: just run it in a terminal window.
 
-If you prefer to start reading the documentation online before, be my guest: the documentation starts [here](./tutorial-1-concepts.md "Tutorial Part 0") (and post feedbacks so that it is further improved :smile:).
+If you prefer to start reading the documentation online before, be my guest: the documentation starts [here](./tutorial-0-intro.md "Part 0 - Introduction") (and post feedbacks so that it is further improved :smile:).
