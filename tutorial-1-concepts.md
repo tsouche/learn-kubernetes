@@ -178,4 +178,4 @@ Each Pod is tied to the Node where it is scheduled, and remains there until term
 
 ## Conclusion
 
-That's is for concepts: you know enough on the paper and it's high time to get into practise: so let's jump to [Part 2](.//tutorial-2-create-cluster.md "Tutorial Part 2: Create teh Kubernetes Cluster")
+That's is for concepts: you know enough on the paper and it's high time to get into practise: so let's jump to [Part 2](.//tutorial-2-create-cluster.md "Tutorial Part 2: Create teh Kubernetes Cluster").
