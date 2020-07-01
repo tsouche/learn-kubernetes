@@ -216,13 +216,15 @@ Kubernetes _Pods_ are mortal. They are born and when they die, they are not resu
 
 This leads to a problem: if some set of _Pods_ (call them “backends”) provides functionality to other _Pods_ (call them “frontends”) inside your cluster, how do the frontends find out and keep track of which IP address to connect to, so that the frontend can use the backend part of the workload? The answer is "setup a _Service-".
 
-The _Service_ will expose a _Deployment_ to the cluster ENDPOINT (the IP address which is shared for all services) and a port dedicated to each _Deployment_ (most often a NODE_PORT) : the _Service_ will forward and load-balance a request reaching ENDPOINT:NODE_PORT towards the _Pods_ which belong to the _Deployment_. You will see how to do it in Part 3 of the tutorial.
+The _Service_ will expose a _Deployment_ to the cluster `ENDPOINT` (the IP address which is shared for all services) and a port dedicated to each _Deployment_ (most often a `NODE_PORT`) : the _Service_ will forward and load-balance a request reaching `ENDPOINT:NODE_PORT` towards the _Pods_ which belong to the _Deployment_. You will see how to do it in Part 3 of the tutorial.
+
+This is enough for most internal exposition requirements, but it is clearly not suited for exposing the application to the outside world.
 
 ### 2.7.4 - Ingress
 
-
+And this is why Kubernetes offers the _Ingress_ feature: setting up an _Ingress_ enable to route the traffic from `ENDPOINT:NODE_PORT` to an externally visible `URL/path` so that it is easy for the external users to access the application. And in our tutorial, we will typically establish a pulic routing towards... `localhost`, the local machine on which we will run the tutorial :smile:. 
 
 
 ## Conclusion
 
-That's is for concepts: you know enough on the paper and it's high time to get into practise: so let's jump to **[Part 2](.//tutorial-2-create-cluster.md "Tutorial Part 2: Create the Kubernetes Cluster")**.
+That's is for concepts: you know enough on the theory and it's high time to get into practising: so let's jump to **[Part 2](.//tutorial-2-create-cluster.md "Tutorial Part 2: Create the Kubernetes Cluster")**.
