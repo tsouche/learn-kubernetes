@@ -168,6 +168,8 @@ This requires that we explain a _Deployment_, a _Service_ and an _Ingress_:
 
 ![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-3.png "Expose a micro-service running on Kubernetes")
 
+The concept is that _Pods_ are grouped in order to have multiple replicas of the same piece of software to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ (or the underlying _Node_) would fail. Such a group is very often a `ReplicaSet` (there are several way to regroup _Pods_ but we will not enter into too much details here and now), and is managed by a _Deployment_. Namely the Deployment is told the _Desired State_ (let's say that we want 3 replicas), knowns  and should indicate that we need _n_ replicas, and it will manage all actions in order to de^moy the _n_ Pods in order 
+
 
 #### 2.7.1 - the *Pod*, atomic unit of an application
 
