@@ -18,11 +18,11 @@ With modern web services, users expect applications to be available 24/7, and de
 
 Kubernetes coordinates a highly available cluster of computers that are connected to work as a single unit. The abstractions in Kubernetes allow you to deploy containerized applications to a cluster without tying them specifically to individual machines. To make use of this new model of deployment, applications need to be packaged in a way that decouples them from individual hosts: they need to be containerized.
 
-**KUBERNETES CAN MANAGE CONTAINERIZED APPLICATIONS ONLY**
+***KUBERNETES CAN MANAGE CONTAINERIZED APPLICATIONS ONLY***
 
 Containerized applications are more flexible and available than in past deployment models, where applications were installed directly onto specific machines as packages deeply integrated into the host. Kubernetes automates the distribution and scheduling of application containers across a cluster in a more efficient way.
 
-![alt txt](./images/tuto-1-Kubernetes-architecture-simple.png "Architecture Overview")
+![alt txt](./images/tuto-1-kubernetes-overview.png "Architecture Overview")
 
 But beyond the gain of moving from physical to *another-type-of-virtual infrastructure*, Kubernetes brings a total automation of the basic operation of the applications running on it: beyond just orchestrating containers, it actually manages teh whole lifecycle of applications.
 
