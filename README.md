@@ -26,7 +26,7 @@ The various steps of the tutorial:
 To get started, you should choose a directory from which you will run this tutorial: I suggest you create a `/tuto` directory at the root of the file system, and clone this git repo into it.
 
 ```bash
-sudo mkdir /tuto && sudo chmod +777 /tuto && cd /tuto && \
+sudo rm -rf /tuto && sudo mkdir /tuto && sudo chmod +777 /tuto && cd /tuto && \
     git clone https://github.com/tsouche/learn-kubernetes.git && \
     cd learn-kubernetes
 ```
