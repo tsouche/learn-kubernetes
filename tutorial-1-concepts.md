@@ -22,7 +22,7 @@ Kubernetes coordinates a highly available cluster of computers that are connecte
 
 Containerized applications are more flexible and available than in past deployment models, where applications were installed directly onto specific machines as packages deeply integrated into the host. Kubernetes automates the distribution and scheduling of application containers across a cluster in a more efficient way.
 
-![alt txt](./images/tuto-1-tuto-1-goals.png "Architecture Overview")
+![alt txt](./images/tuto-1-Kubernetes-architecture-simple.png "Architecture Overview")
 
 But beyond the gain of moving from physical to *another-type-of-virtual infrastructure*, Kubernetes brings a total automation of the basic operation of the applications running on it: beyond just orchestrating containers, it actually manages teh whole lifecycle of applications.
 
@@ -175,3 +175,7 @@ A Pod models an application-specific "logical host" and can contain different ap
 Pods are the **atomic unit** on the Kubernetes platform. When we create a Deployment on Kubernetes, that Deployment creates Pods with containers inside them (as opposed to creating containers directly).
 
 Each Pod is tied to the Node where it is scheduled, and remains there until termination (according to restart policy) or deletion. In case of a Node failure, identical Pods are scheduled on other available Nodes in the cluster.
+
+## Conclusion
+
+That's is for concepts: you know enough on the paper and it's high time to get into practise: so let's jump to [Part 2](.//tutorial-2-create-cluster.md "Tutorial Part 2: Create teh Kubernetes Cluster")
