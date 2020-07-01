@@ -166,7 +166,7 @@ We know that an application is cut in small pieces (micro-services), and that ea
 
 This requires that we explain a _Deployment_, a _Service_ and an _Ingress_:
 
-![alt txt](./images/tuto-1-from-pod-to-service-to-ingress.png "Expose a micro-service running on Kubernetes")
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-3.png "Expose a micro-service running on Kubernetes")
 
 
 #### 2.7.1 - the *Pod*, atomic unit of an application
@@ -176,7 +176,7 @@ When you deploy an application on a cluster, Kubernetes creates a **Pod** to hos
 * Networking, as a unique **cluster IP address**
 * Information about how to run each container, such as the container image version or specific ports to use...
 
-![alt txt](./images/tuto-1-pod-overview-1.png "a typical Pod")
+![alt txt](./images/tuto-1-pod-overview-3.png "a typical Pod")
 
 A Pod models an application-specific "logical host" and can contain different application containers which are relatively tightly coupled. For example, a Pod might include both the container with your Node.js app as well as a different container that feeds the data to be published by the Node.js webserver. The containers in a Pod share an IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.
 
@@ -189,11 +189,24 @@ Each Pod is tied to the Node where it is scheduled, and remains there until term
 
 ### 2.7.2 - Deployment
 
+A _Deployment_ provides declarative updates for _Pods_ and _ReplicaSets_. As explained above about Controllers, the principle is to describe a **desired state** in a _Deployment_, and the _Deployment Controller_ changes the _actual state_ to the _desired state_ (scale up, scale down, upgrade version...) at a controlled rate. You can define Deployments to create new ReplicaSets (i.e. group of _Pods_ managed by the Master), or to remove existing Deployments and release all their resources (to make them available to other _Deployments_).
+
+
 ![alt txt](./images/tuto-1-pod-overview-1.png "A Deployment of several Pods, exposed by a Service towards an Ingress")
 
+The following are typical use cases for Deployments:
 
+* Create a Deployment to rollout a ReplicaSet (= a Set of _Pods_). The ReplicaSet creates _Pods_ in the background. Check the status of the rollout to see if it succeeds or not.
+* Scale up the Deployment to facilitate more load, or scale it down if the load decreases.
+* Upgrade the version of the applicaton, by changing the version of the Pods: changing the Docker image which should be used for the _Pod_. This means that the Deployment will create a new ReplicaSet and the Deployment manages moving the Pods from the old ReplicaSet to the new one at a controlled rate.
+* Rollback to an earlier Deployment revision if the current state of the Deployment is not stable.
+* Pause the Deployment to apply multiple fixes to its Pod template and then resume it to start a new rollout.
+* Clean up older ReplicaSets that you don't need anymore.
 
 ### 2.7.3 - Service
+
+Once the Pods are organised into a group, managed by a Deployment, the group can be linked to a Service 
+
 
 
 
