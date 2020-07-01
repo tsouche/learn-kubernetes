@@ -18,5 +18,5 @@ The various steps of the tutorial:
 
 ... and once you have reached this point, you may be interested in getting into *real* production topics with Kubernetes, and you will then need to pursue with much more serious tutorials, on real infrastructure.
 
-So, if you know nothing about Kubernetes and you want to learn about it, be my guest, run through this tutorial (and post feedbacks so that it is further improved :smile:).
+So, if you know nothing about Kubernetes and you want to learn about it, be my guest, run through this tutorial: it start [here](./tutorial-1-concepts.md "Tutorial Part 1") (and post feedbacks so that it is further improved :smile:).
 
