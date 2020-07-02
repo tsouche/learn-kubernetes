@@ -22,8 +22,8 @@ This tutorial also relies on multiple other documents and files which are availa
 
 * a sub-directory `./cluster-deploy` contains various configuration files used in the Part 2 for setting up the kubernetes cluster
 * a sub-directory `./app-part3` contains the components of a simple 'hello world' application used in Part 3;
-* a sub-directory `./app-part4` contains the components of a stateful 'guestbook' application used in Part 4;
-* a sub-directory `./app-part5` contains the components of a example of implementation of a cassandra ring ontop kubernetes, used in Part 5.
+* a sub-directory `./app-part4` contains the components of a stateful 'hello world' application used in Part 4;
+* a sub-directory `./app-part5` contains the components of a stateful 'hello world' application using a cassandra ring on kubernetes, used in Part 5.
 * several pictures which appear in the Tutorial documents are stored in the `./images` directory;
 * and, while structuring this tutorial, I gathered some interesting notes in *Appendices* files which you will find in the `./appendices` directory.
 
