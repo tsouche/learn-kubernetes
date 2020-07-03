@@ -72,23 +72,17 @@ A running Kubernetes cluster contains:
 
 A Kubernetes cluster can be deployed on either physical or virtual machines. In our case, because we do not aim at building a production environment but we only need it for education, Part 2 shows how to deploy a Kubernetes cluster by simulating every _Node_ with Docker container on your local machine, and then running all Kubernetes components as *Docker containers inside the _Nodes_ Docker containers*: it is good enough for educational purposes, but it obviously is not representative of a 'real' cluster (which typically gathers hundreds of physical servers): in the real world, a ***Node*** is a VM or a physical computer.
 
+
 #### Looking into the _Master Node_
 
+The ***Master*** is responsible for managing the cluster, and as such is the control plane of the cluster. The _Master_ coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates. As you can see below, the _Master_ is split into a set of logical components, which can all run on one single or over several replicated _Nodes_ in order to support high-availability clusters, or can even be run on Kubernetes itself (AKA self-hosted):
+
 ![alt txt](./images/tuto-1-k8s-master.png "The Master Node")
-
-
-
-The ***Master*** is responsible for managing the cluster, and as such is the control plane of the cluster. The _Master_ coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates.
-
-![alt txt](./images/tuto-1-k8s-master.png "The Master")
-
-
-The _Master_ is split into a set of logical components, which can all run on one single or over several replicated _Nodes_ in order to support high-availability clusters, or can even be run on Kubernetes itself (AKA self-hosted).
 
 The main logical components of the control plane are:
 
 * ### the API Server
-  The Kubernetes REST API enable the Master to send orders to the _Nodes_ such as 'start a _Pod_', 'stop a _Pod_', and also enable a _Node_ to send updated status information to the _Master_ (in order, for instance,  that the _Master_ keep a global view on the resources available in the cluster).
+  Every possible communication from / to / within the cluster goes through the API Server: it enable the _Master_ to send orders to the _Nodes_ such as 'start a _Pod_', 'stop a _Pod_', and also enable a _Node_ to send updated status information to the _Master_ (in order, for instance,  that the _Master_ keep a global view on the resources available in the cluster).
   The **API server** serves up the *Kubernetes API*. It is intended to be a relatively simple server, with most/all business logic implemented in separate components or in plug-ins. It mainly processes REST operations, validates them, and updates the corresponding objects in `etcd` (and perhaps eventually other stores).
   Kubernetes cannot function without this basic API machinery, which includes:
 
