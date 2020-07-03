@@ -37,21 +37,7 @@ I have decided to quote here the introduction of the project by the community it
 *Consequently, there are no "internal" inter-component APIs. All APIs are visible and available, including the APIs used by the scheduler, the node controller, the replication-controller manager, Kubelet's API, etc. There's no glass to break -- in order to handle more complex use cases, one can just access the lower-level APIs in a fully transparent, composable manner.*
 
 
-## 2 - Kubernetes Design & Architecture
-
-### 2.1 - Overview
-
-Kubernetes is a production-grade, open-source infrastructure for the deployment scaling, management, and composition of application containers across clusters of hosts, inspired by previous work at Google. Kubernetes is more than just a *“container orchestrator”*. It aims to eliminate the burden of orchestrating physical/virtual compute, network, and storage infrastructure, and enable application operators and developers to focus entirely on container-centric primitives for self-service operation. Kubernetes also provides a stable, portable foundation (a platform) for building customized workflows and higher-level automation.
-
-![image](./images/tuto-1-goals.png "From Bare Metal to Containers")
-
-Kubernetes is primarily targeted at applications composed of multiple containers. It therefore groups containers using ***Pods*** and ***Labels*** into tightly coupled and loosely coupled formations for easy management and discovery.
-
-Kubernetes is a platform for deploying and managing containers. Kubernetes provides a container runtime, container orchestration, container-centric infrastructure orchestration, self-healing mechanisms such as health checking and re-scheduling, and service discovery and load balancing.
-
-Kubernetes aspires to be an extensible, pluggable, building-block OSS platform and toolkit. Therefore, architecturally, we want Kubernetes to be built as a collection of pluggable components and layers, with the ability to use alternative schedulers, controllers, storage systems, and distribution mechanisms, and we're evolving its current code in that direction. Furthermore, we want others to be able to extend Kubernetes functionality, such as with higher-level PaaS functionality or multi-cluster layers, without modification of core Kubernetes source. Therefore, its API isn't just (or even necessarily mainly) targeted at end users, but at tool and extension developers. Its APIs are intended to serve as the foundation for an open ecosystem of tools, automation systems, and higher-level API layers. Consequently, there are no "internal" inter-component APIs. All APIs are visible and available, including the APIs used by the scheduler, the node controller, the replication-controller manager, Kubelet's API, etc. There's no glass to break --in order to handle more complex use cases, one can just access the lower-level APIs in a fully transparent, composable manner.
-
-### 2.2 - Goals
+### 1.3 - Goals
 
 The Kubernetes project is committed to the following (aspirational) design ideals:
 
@@ -64,7 +50,16 @@ The Kubernetes project is committed to the following (aspirational) design ideal
 * ***Advance the state of the art:*** While Kubernetes intends to support non-cloud-native applications, it also aspires to advance the cloud-native and DevOps state of the art, such as in the participation of applications in their own management. However, in doing so, we strive not to force applications to lock themselves into Kubernetes APIs, which is, for example, why we prefer configuration over convention in the downward API. Additionally, Kubernetes is not bound by the lowest common denominator of systems upon which it depends, such as container runtimes and cloud providers. An example where we pushed the envelope of what was achievable was in its IP per Pod networking model.
 
 
-### 2.3 - Architecture
+## 2 - Kubernetes Design & Architecture
+
+
+Kubernetes is a production-grade, open-source infrastructure for the deployment scaling, management, and composition of application containers across clusters of hosts, inspired by previous work at Google. Kubernetes is more than just a *“container orchestrator”*. It aims to eliminate the burden of orchestrating physical/virtual compute, network, and storage infrastructure, and enable application operators and developers to focus entirely on container-centric primitives for self-service operation. Kubernetes also provides a stable, portable foundation (a platform) for building customized workflows and higher-level automation.
+
+![image](./images/tuto-1-goals.png "From Bare Metal to Containers")
+
+Kubernetes is primarily targeted at applications composed of multiple containers. It therefore groups containers using ***Pods*** and ***Labels*** into tightly coupled and loosely coupled formations for easy management and discovery.
+
+### 2.2 - Overall architecture
 
 A running Kubernetes cluster contains:
 * one or several ***Master Node(s)*** which operate the cluster control plane (AKA Master), and
@@ -73,7 +68,7 @@ A running Kubernetes cluster contains:
 A Kubernetes cluster can be deployed on either physical or virtual machines. In our case, because we do not aim at building a production environment but we only need it for education, Part 2 shows how to deploy a Kubernetes cluster by simulating every _Node_ with Docker container on your local machine, and then running all Kubernetes components as *Docker containers inside the _Nodes_ Docker containers*: it is good enough for educational purposes, but it obviously is not representative of a 'real' cluster (which typically gathers hundreds of physical servers): in the real world, a ***Node*** is a VM or a physical computer.
 
 
-#### Looking into the _Master Node_
+### 2.3 - Looking into the _Master Node(s)_
 
 The ***Master*** is responsible for managing the cluster, and as such is the control plane of the cluster. The _Master_ coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates. As you can see below, the _Master_ is split into a set of logical components, which can all run on one single or over several replicated _Nodes_ in order to support high-availability clusters, or can even be run on Kubernetes itself (AKA self-hosted):
 
@@ -81,9 +76,9 @@ The ***Master*** is responsible for managing the cluster, and as such is the con
 
 The main logical components of the control plane are:
 
-* ### the API Server
-  Every possible communication from / to / within the cluster goes through the API Server: it enable the _Master_ to send orders to the _Nodes_ such as 'start a _Pod_', 'stop a _Pod_', and also enable a _Node_ to send updated status information to the _Master_ (in order, for instance,  that the _Master_ keep a global view on the resources available in the cluster).
-  The **API server** serves up the *Kubernetes API*. It is intended to be a relatively simple server, with most/all business logic implemented in separate components or in plug-ins. It mainly processes REST operations, validates them, and updates the corresponding objects in `etcd` (and perhaps eventually other stores).
+* the **API Server**
+  Every possible communication from / to / within the cluster goes through the API Server: it enable the _Master_ to send orders to the _Nodes_ such as 'start a _Pod_', 'stop a _Pod_', and also enable a _Node_ to send updated status information to the _Master_ (in order, for instance,  that the _Master_ keep a global view on the resources available in the cluster, and store it in the _cluster state store_).
+  The _API server_ serves up the *Kubernetes API*. It is intended to be a relatively simple server, with most/all business logic implemented in separate components or in plug-ins. It mainly processes REST operations, validates them, and updates the corresponding objects in `etcd` (and perhaps eventually other stores).
   Kubernetes cannot function without this basic API machinery, which includes:
 
   * REST semantics, watch, durability and consistency guarantees, API versioning, defaulting, and validation
@@ -92,79 +87,87 @@ The main logical components of the control plane are:
 
   Additionally, the API server acts as the gateway to the cluster. By definition, the API server must be accessible by clients from outside the cluster, whereas the nodes, and certainly containers, may not be. Clients authenticate the API server and also use it as a bastion and proxy/tunnel to _Nodes_ and _Pods_ (and _Services_).
 
-* ### etcd = the cluster state store
+* **`etcd` = the cluster state store**
   All persistent cluster state is stored in an instance of `etcd`. This provides a way to store configuration data reliably. With watch support, coordinating components can be notified very quickly of changes.
 
-* ### the Controller Manager, Controllers
-  Most cluster-level functions are monitored by a separate process, called the **Controller Manager**. When the _Controller Manager_ need to launch an action (e.G. "deploy the application A"), it will start a **Controller** to actually do it.
-
+* the **Controller Manager** and **Controllers**
+  Most cluster-level functions are monitored by a separate process, called the _Controller Manager_. When the _Controller Manager_ need to launch an action (e.G. "deploy the application A"), it will start a _Controller_ to actually do it.
   The *Controller* is given one input: the ***'desired state'*** (for instance deploying 5 instances of the application A). With this target, it will work continuously to drive the actual state towards the desired state, while reporting back the currently observed state in the cluster state store, so that users and other controllers can see it. The controller typically watch for changes to relevant resources in order to minimize reaction latency and redundant work: this enables decentralized and decoupled choreography-like coordination without a message bus.
 
-* ### the Scheduler
-  When the _Controller_ decides that an action is needed, it will rely on the **Scheduler** to execute that action. For instance, if the _Controller_ observes that only 4 instances of the application A are running instead of 5, it will trigger the _Scheduler_ to "add a _Pod_". The _Controller_ has no clue on which _Node_ the new _Pod_ should be launched: the *Scheduler* automatically chooses _Nodes_ to run those _Pods_ on. The _Scheduler_ watches for unscheduled _Pods_ and binds them to _Nodes_, according to the availability of the requested resources, quality of service requirements, affinity and anti-affinity specifications, and other constraints.
+* the **Scheduler**
+  When the _Controller_ decides that an action is needed, it will rely on the _Scheduler_ to execute that action. For instance, if the _Controller_ observes that only 4 instances of the application A are running instead of 5, it will trigger the _Scheduler_ to "add a _Pod_ A". The _Controller_ has no clue on which _Node_ the new _Pod_ should be launched: in collaboration with the _kubelets_ (see below), the *Scheduler* automatically chooses _Nodes_ to run those _Pods_ on. The _Scheduler_ watches for unscheduled _Pods_ and binds them to _Nodes_, according to the availability of the requested resources, quality of service requirements, affinity and anti-affinity specifications, and other constraints.
 
 One of the most important notion to acquire is how to properly describe a *'desired state'* and to feed it to the _Master_, so that the _Master_ will do all the job for you. Most resources contain metadata, including labels and annotations, fully elaborated desired state (spec), including default values, and observed state (status). These metadata are typically described in YAML files, which are very useful to actually manage a Kubernetes cluster.
 
+#### Add-ons
 
-#### Looking into the _Worker Node_
+Contrarily to Kubernetes native components, ***Addons*** use Kubernetes resources (DaemonSet , Deployment , etc) to implement cluster features. Because these are providing cluster-level features, namespaced resources for addons belong within the kube-system namespace. In other words, the add-ons are truely part of the *system* but they are technically managed _almost_ like any application you would deploy on Kubernetes.
 
- Each _Node_ carries several Kubernetes components which are core to its functionning :
-* a `Kubelet`, which is the agent managing the _Node_ (deciding to deploy a _Pod_ on the _Node_ and allocating resources to it) and communicating with the _Master_,
-* a Container runtime engine - which very often is Docker (and in our specific case, it is Docker-in-Docker) - on which e _Pods_ run;
-* a Kube-proxy which enables communication between all the _Nodes_ of the cluster (the _Master Node(s)_ and the _Worker Nodes_).
-The _Node_ should also have tools (a **container runtime**) for handling container operations, such as `Docker` or `rkt`. A Kubernetes cluster that handles production traffic should have a minimum of three _Nodes_.
+Let's mention few add-ons
 
-When you deploy applications on Kubernetes, you tell the _Master_ to start the application _Pods_, and each _Pod_ regroups one or several containers. The _Master_ schedules the _Pods_' containers to run on the cluster's _Nodes_. The _Nodes_ communicate with the _Master_ using the Kubernetes API, which the _Master_ exposes. End users also use the Kubernetes API directly to interact with the cluster.
-* several ***Pods*** which are groups of containers which compose an application: Kubernetes enable to run an application by its ability to orchestrates pods on the cluster's _Nodes_.
+* ***DNS***
+  While the other addons are not strictly required, all Kubernetes clusters should have cluster DNS, as all internal communication rely on it. Cluster DNS is a DNS server, in addition to the other DNS server(s) in your environment, which serves DNS records for Kubernetes services.
+  Containers started by Kubernetes automatically include this DNS server in their DNS searches.
+* ***Web UI = the Dashboard***
+  The _Dashboard_ is a general purpose, web-based UI for Kubernetes clusters. It allows users to manage and troubleshoot applications running in the cluster, as well as the cluster itself.
+  The _Dashboard_ is the UI version of `kubectl`: it only passes API calls to the Master, and restitutes the answers in a graphical format. One could also say that `kubectl` is CLI version of the Dashboard :smile:.
 
-The Kubernetes **node** runs the services necessary to host application containers and be managed from the master systems:
 
-![alt txt](./images/tuto-1-k8s-worker.png "a typical Pods")
+### 2.4 - Looking into the _Worker Node_
 
-* ### Kubelet
-  The most important and most prominent controller in Kubernetes is the ***Kubelet***, which is the primary implementer of the _Pod_ and _Node_ APIs, that drive the container execution layer. Without these APIs, Kubernetes would just be a CRUD-oriented REST application framework backed by a key-value store.
+As you can see below, each _Node_ runs several Kubernetes components which are core to its functionning :
 
-  Kubernetes executes isolated application containers as its default, native mode of execution, as opposed to processes and traditional operating-system packages. Not only are application containers isolated from each other, but they are also isolated from the hosts on which they execute, which is critical to decoupling management of individual applications from each other and from management of the underlying cluster physical/virtual infrastructure.
+![alt txt](./images/tuto-1-k8s-worker-1.png "an 'empty' Worker Node")
 
-  Kubernetes provides ***Pods*** that can host multiple containers and storage volumes as its fundamental execution primitive in order to facilitate packaging a single application per container, decoupling deployment-time concerns from build-time concerns, and migration from physical/virtual machines. The _Pod_ primitive is key to glean the primary benefits of deployment on modern cloud platforms, such as Kubernetes.
+* the **Kube Proxy**
+  Each node runs a `kube-proxy` process which enables communication between all the _Nodes_ of the cluster (the _Master Node(s)_ and the _Worker Nodes_) and between all components within the _Node_. It provides a highly-available load-balancing solution with low performance overhead by balancing client traffic from a _Pod_ on that same _Node_.
+
+* the **Kubelet**
+  The most important and most prominent controller in Kubernetes is the _Kubelet_, which is the primary implementer of the _Pod_ and _Node_ APIs, that drive the container execution layer. Without these APIs, Kubernetes would just be a CRUD-oriented REST application framework backed by a key-value store.
 
   API admission control may reject pods or add additional scheduling constraints to them, but Kubelet is the final arbiter of what _Pods_ can and cannot run on a given _Node_, not the schedulers.
 
-* ### Container runtime = Docker
-  Each node runs a **container runtime**, which is responsible for downloading images and running containers.
-  Kubelet does *not* link in the base container runtime. Instead, we're defining a Container Runtime Interface to control the underlying runtime and facilitate pluggability of that layer. This decoupling is needed in order to maintain clear component boundaries, facilitate testing, and facilitate pluggability. Runtimes supported today, either upstream or by forks, include at least `docker` (for Linux and Windows), `rkt`, `cri-o`, and `frakti`.
+* **Container runtime** _(= Docker in our case)_
+  Each node runs a _container runtime_, which is responsible for downloading images and running containers. In our case, we use Docker but you may choose for other technologies.
+  > Kubelet does *not* link in the base _container runtime_. Instead, we're defining a Container Runtime Interface (CRI) to control the underlying runtime and facilitate pluggability of that layer. This decoupling is needed in order to maintain clear component boundaries, facilitate testing, and facilitate pluggability.
+  > Runtimes supported today, either upstream or by forks, include at least `docker` (for Linux and Windows), `rkt`, `cri-o`, and `frakti`.
 
-* ### Kube Proxy
-  The service abstraction provides a way to group pods under a common access policy (e.g., load-balanced). The implementation of this creates a virtual IP which clients can access and which is transparently proxied to the pods in a Service. Each node runs a `kube-proxy` process which programs iptables rules to trap access to service IPs and redirect them to the correct backends. This provides a highly-available load-balancing solution with low performance overhead by balancing client traffic from a _Pod_ on that same _Node_.
-  Service endpoints are found primarily via DNS.
+When you launch an application, Kubernetes actually schedules _Pods_ on _Nodes_, which then look like this:
+![alt txt](./images/tuto-1-k8s-worker-2.png "A Worker Node loaded with 4 Pods").
 
-#### Assembling everythin to build a cluster
+But for the sake of simplicity, we will show it like this:
+
+![alt txt](./images/tuto-1-k8s-worker-3.png "a simplified wiew of a Worker Node").
+
+
+### 2.5 - Assembling everything to build a cluster
+
 
 ![alt txt](./images/tuto-1-k8s-overview-00.png "cluster overview")
 ![alt txt](./images/tuto-1-k8s-overview-01.png "cluster overview")
 ![alt txt](./images/tuto-1-k8s-overview-02.png "cluster overview")
+![alt txt](./images/tuto-1-k8s-overview-03.png "cluster overview")
+
+When you deploy applications on Kubernetes, you tell the _Master_ to start the application _Pods_, and each _Pod_ regroups one or several containers. The _Master_ schedules the _Pods_' containers to run on the cluster's _Nodes_. The _Nodes_ communicate with the _Master_ using the Kubernetes API, which the _Master_ exposes. End users also use the Kubernetes API directly to interact with the cluster.
+* several ***Pods*** which are groups of containers which compose an application: Kubernetes enable to run an application by its ability to orchestrates pods on the cluster's _Nodes_.
 
 
 
 
 
 
-
-#### Add-ons
-
-Contrarily to Kubernetes native components, ***Addons*** use Kubernetes resources (DaemonSet , Deployment , etc) to implement cluster features. Because these are providing cluster-level features, namespaced resources for addons belong within the kube-system namespace. In other words, the add-ons are truely part of the *system* but they are managed almost like any application you would deploy on Kubernetes.
-
-Let's mention few add-ons
-
-* ### DNS
-  While the other addons are not strictly required, all Kubernetes clusters should have cluster DNS, as many examples rely on it. Cluster DNS is a DNS server, in addition to the other DNS server(s) in your environment, which serves DNS records for Kubernetes services.
-  Containers started by Kubernetes automatically include this DNS server in their DNS searches.
-* ### Web UI (the Dashboard)
-  Dashboard is a general purpose, web-based UI for Kubernetes clusters. It allows users to manage and troubleshoot applications running in the cluster, as well as the cluster itself.
-  The Dashboard is the UI version of `kubectl`: it only passes API calls to the Master, and restitutes the answers in a graphical format. One could also say that `kubectl` is CLI version of the Dashboard ;-).
 
 
 ### 2.7 - How an application 'works' on Kubernetes
+
+
+
+***Pods***
+
+Kubernetes executes isolated application containers as its default, native mode of execution, as opposed to processes and traditional operating-system packages. Not only are application containers isolated from each other, but they are also isolated from the hosts on which they execute, which is critical to decoupling management of individual applications from each other and from management of the underlying cluster physical/virtual infrastructure.
+
+Kubernetes provides ***Pods*** that can host multiple containers and storage volumes as its fundamental execution primitive in order to facilitate packaging a single application per container, decoupling deployment-time concerns from build-time concerns, and migration from physical/virtual machines. The _Pod_ primitive is key to glean the primary benefits of deployment on modern cloud platforms, such as Kubernetes.
+
 
 
 We know that an application is cut in small pieces (micro-services), and that each small piece is instantiated with a _Pod_. We still need to understand how the _Pods_ are running on the _Nodes_, and what other Kubernetes mechanisms are actioned in order to get an application running.
