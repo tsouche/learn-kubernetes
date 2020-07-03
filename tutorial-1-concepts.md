@@ -41,9 +41,9 @@ I have decided to quote here the introduction of the project by the community it
 
 ### 2.1 - Overview
 
-Kubernetes is a production-grade, open-source infrastructure for the deployment scaling, management, and composition of application containers across clusters of hosts, inspired by previous work at Google.Kubernetes is more than just a “container orchestrator.” It aims to eliminate the burden of orchestrating physical/virtual compute, network, and storage infrastructure, and enable application operators and developers to focus entirely on container-centric primitives for self-service operation. Kubernetes also provides a stable, portable foundation (a platform) for building customized workflows and higher-level automation.
+Kubernetes is a production-grade, open-source infrastructure for the deployment scaling, management, and composition of application containers across clusters of hosts, inspired by previous work at Google. Kubernetes is more than just a *“container orchestrator”*. It aims to eliminate the burden of orchestrating physical/virtual compute, network, and storage infrastructure, and enable application operators and developers to focus entirely on container-centric primitives for self-service operation. Kubernetes also provides a stable, portable foundation (a platform) for building customized workflows and higher-level automation.
 
-![alt txt](./images/tuto-1-kubernetes-overview.png "Architecture Overview")
+![image](./images/tuto-1-goals.png "From Bare Metal to Containers")
 
 Kubernetes is primarily targeted at applications composed of multiple containers. It therefore groups containers using ***Pods*** and ***Labels*** into tightly coupled and loosely coupled formations for easy management and discovery.
 
@@ -71,9 +71,7 @@ A running Kubernetes cluster contains:
 * several ***Nodes*** which communicate with and are managed by the _Master_ thanks to the Kubernetes REST APIs.
 * several ***Pods*** which are groups of containers which compose an application: Kubernetes enable to run an application by its ability to orchestrates pods on the cluster's _Nodes_.
 
-![alt txt](./images/tuto-1-cluster-overview.png "cluster overview")
-
-The ***Master*** is responsible for managing the cluster. The _Master_ coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates.
+![alt txt](./images/tuto-1-k8s-architecture.png "cluster overview")
 
 A ***Node*** is a VM or a physical computer that serves as a worker machine in a Kubernetes cluster. Each _Node_ has a `Kubelet`, which is an agent for managing the _Node_ and communicating with the _Master_. The _Node_ should also have tools (a **container runtime**) for handling container operations, such as `Docker` or `rkt`. A Kubernetes cluster that handles production traffic should have a minimum of three _Nodes_.
 
@@ -84,12 +82,12 @@ A Kubernetes cluster can be deployed on either physical or virtual machines. In 
 
 ### 2.4 - Cluster control plane (AKA Master)
 
-The Kubernetes **control plane** is split into a set of logical components, which can all run on a single _Master Node_, or can be replicated over several _Master Nodes_ in order to support high-availability clusters, or can even be run on Kubernetes itself (AKA self-hosted).
+The ***Master*** is responsible for managing the cluster, and as such is the control plane of the cluster. The _Master_ coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates.
 
-*Everything* within the cluster requires (or is triggered by) calls to the Kubernetes API. Kubernetes’s API provides:
-* *container-centric primitives* such as _Pods_, _Services_, and _Ingress_, to manage underlying resources (compute, storage, network): it may be compared to the IaaS-type of APIs which enable to manage VMs, keeping in mind that Kubernetes can ONLY manage containers;
-* *lifecycle APIs* to support 'orchestration' (self-healing, scaling, updates, termination) of common types of workloads (simple fungible/stateless app, stateful apps), batches, cron jobs...).
+![alt txt](./images/tuto-1-k8s-master.png "The Master")
 
+
+The _Master_ is split into a set of logical components, which can all run on one single or over several replicated _Nodes_ in order to support high-availability clusters, or can even be run on Kubernetes itself (AKA self-hosted).
 
 The main logical components of the control plane are:
 
@@ -104,15 +102,16 @@ The main logical components of the control plane are:
 
   Additionally, the API server acts as the gateway to the cluster. By definition, the API server must be accessible by clients from outside the cluster, whereas the nodes, and certainly containers, may not be. Clients authenticate the API server and also use it as a bastion and proxy/tunnel to _Nodes_ and _Pods_ (and _Services_).
 
-* ### the cluster state store
+* ### etcd = the cluster state store
   All persistent cluster state is stored in an instance of `etcd`. This provides a way to store configuration data reliably. With watch support, coordinating components can be notified very quickly of changes.
 
-* ### the Controller Manager, Controllers and the Scheduler
-  Most cluster-level functions are currently monitored by a separate process, called the **Controller Manager**. When the Controller Manager need to launch an action (e.G. "deploy the application A"), it will start a **controller** to actually do it.
+* ### the Controller Manager, Controllers
+  Most cluster-level functions are monitored by a separate process, called the **Controller Manager**. When the _Controller Manager_ need to launch an action (e.G. "deploy the application A"), it will start a **Controller** to actually do it.
 
-  The **Controller** is given one input: the **'desired state'** (for instance deploying 5 instances of the application A). With this target, it will work continuously to drive the actual state towards the desired state, while reporting back the currently observed state in the cluster state store, so that users and other controllers can see it. The controller typically watch for changes to relevant resources in order to minimize reaction latency and redundant work: this enables decentralized and decoupled choreography-like coordination without a message bus.
+  The *Controller* is given one input: the ***'desired state'*** (for instance deploying 5 instances of the application A). With this target, it will work continuously to drive the actual state towards the desired state, while reporting back the currently observed state in the cluster state store, so that users and other controllers can see it. The controller typically watch for changes to relevant resources in order to minimize reaction latency and redundant work: this enables decentralized and decoupled choreography-like coordination without a message bus.
 
-  When the controller decides that an action is needed, it will rely on the **Scheduler** to execute that action. For instance, if the controller observes that only 5 instances of the application A are running, it will trigger the _Scheduler_ to "add a _Pod_". The controller has no clue on which _Node_ the new _Pods_ should be launched: the *Scheduler* automatically chooses _Nodes_ to run those _Pods_ on. The scheduler watches for unscheduled _Pods_ and binds them to _Nodes_, according to the availability of the requested resources, quality of service requirements, affinity and anti-affinity specifications, and other constraints.
+* ### the Scheduler
+  When the _Controller_ decides that an action is needed, it will rely on the **Scheduler** to execute that action. For instance, if the _Controller_ observes that only 4 instances of the application A are running instead of 5, it will trigger the _Scheduler_ to "add a _Pod_". The _Controller_ has no clue on which _Node_ the new _Pod_ should be launched: the *Scheduler* automatically chooses _Nodes_ to run those _Pods_ on. The _Scheduler_ watches for unscheduled _Pods_ and binds them to _Nodes_, according to the availability of the requested resources, quality of service requirements, affinity and anti-affinity specifications, and other constraints.
 
 One of the most important notion to acquire is how to properly describe a *'desired state'* and to feed it to the _Master_, so that the _Master_ will do all the job for you. Most resources contain metadata, including labels and annotations, fully elaborated desired state (spec), including default values, and observed state (status). These metadata are typically described in YAML files, which are very useful to actually manage a Kubernetes cluster.
 
@@ -122,7 +121,7 @@ One of the most important notion to acquire is how to properly describe a *'desi
 
 The Kubernetes **node** runs the services necessary to host application containers and be managed from the master systems:
 
-![alt txt](./images/tuto-1-node-overview.png "a typical Pods")
+![alt txt](./images/tuto-1-k8s-worker.png "a typical Pods")
 
 * ### Kubelet
   The most important and most prominent controller in Kubernetes is the ***Kubelet***, which is the primary implementer of the _Pod_ and _Node_ APIs, that drive the container execution layer. Without these APIs, Kubernetes would just be a CRUD-oriented REST application framework backed by a key-value store.
@@ -133,7 +132,7 @@ The Kubernetes **node** runs the services necessary to host application containe
 
   API admission control may reject pods or add additional scheduling constraints to them, but Kubelet is the final arbiter of what _Pods_ can and cannot run on a given _Node_, not the schedulers.
 
-* ### Container runtime
+* ### Container runtime = Docker
   Each node runs a **container runtime**, which is responsible for downloading images and running containers.
   Kubelet does *not* link in the base container runtime. Instead, we're defining a Container Runtime Interface to control the underlying runtime and facilitate pluggability of that layer. This decoupling is needed in order to maintain clear component boundaries, facilitate testing, and facilitate pluggability. Runtimes supported today, either upstream or by forks, include at least `docker` (for Linux and Windows), `rkt`, `cri-o`, and `frakti`.
 
