@@ -5,14 +5,14 @@ metadata:
   labels:
     application: hello-part4
     tier: backend
-    component: redis-master
+    component: redis
     role: master
 spec:
   selector:
     matchLabels:
       application: hello-part4
       tier: backend
-      component: redis-master
+      component: redis
       role: master
   replicas: 1
   template:
@@ -20,11 +20,11 @@ spec:
       labels:
         application: hello-part4
         tier: backend
-        component: redis-master
+        component: redis
         role: master
     spec:
       containers:
-      - name: redis-master
+      - name: redis
         #image: k8s.gcr.io/redis:e2e  # or just image: redis
         image: redis
         resources:

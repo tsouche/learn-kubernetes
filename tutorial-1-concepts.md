@@ -170,7 +170,7 @@ If you do nothing more, this is no very useful: you now have a cluster standing 
 The simplest way to interact with the cluster is to use `kubectl`: it is a CLI tool which will take your commands as input, and translate them into valid requests to the _API Server_: it will also translate into a human readable format the answers received from the _API Server_. This namely is a classical way to provision an application on the cluster.
 
 
-![alt txt](./images/tuto-1-k8s-overview-00.png "cluster overview")
+![alt txt](./images/tuto-1-k8s-overview-02.png "cluster overview")
 
 
 So let's now look at what you need to do in order to deploy an application on Kubernetes.
@@ -209,7 +209,7 @@ Once these _Pods_ are scheduled by the _Deployment_, they can handle requests co
 The _Service_ is focused on how the group of _Pods_ should be reached.
 
 3.  Finally, when we want to make the _Service_ publicly visible from the outside of the cluster, reachable via a fixed URL, then you need to activate an _Ingress_: its duty is to establish a public routing/loadbalancing/... from the outside to the application.
-![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-05.png "an Ingress will expose the Pods to the outside")
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-04.png "an Ingress will expose the Pods to the outside")
 
 So let's drill a bit into these mechanisms.
 

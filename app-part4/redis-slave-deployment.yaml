@@ -23,6 +23,25 @@ spec:
         component: redis-slave
         role: slave
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: component
+                operator: In
+                values:
+                - redis-slave
+            topologyKey: "kubernetes.io/hostname"
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: component
+                operator: In
+                values:
+                - redis-master
+            topologyKey: "kubernetes.io/hostname"
       containers:
       - name: redis-slave
         image: redis

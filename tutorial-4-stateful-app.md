@@ -129,6 +129,16 @@ spec:
         tier: frontend
         component: webserver
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: component
+                operator: In
+                values:
+                - webserver
+            topologyKey: "kubernetes.io/hostname"
       containers:
       - name: app-part4
         image: tsouche/learn-kubernetes:part4
@@ -194,6 +204,25 @@ spec:
           serviceName: hello-part4-service
           servicePort: 80
 ```
+
+Please note also the _Deployment_ `spec` mentionning `podAntiAffinity`:
+
+```yaml
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: component
+              operator: In
+              values:
+              - webserver
+          topologyKey: "kubernetes.io/hostname"
+```
+
+The purpose here is to instruct the Scheduler to distribute the _Pods_ over the _Nodes_ so that two _Pods_ will not run on the same _Node_: this is an anti-affinity rule.
+
+> Note: We could also consider an affinity rule if we would want to schedule the frontend _Pods_ on the same _Nodes_ as the backend (mostly for performance reason) but it is not usefull in this case since the _Redis Service_ will run on one single _Node_.
 
 Let's apply these files to run the frontend _Deployment_, _Service_ and _Ingress_:
 
@@ -303,15 +332,14 @@ So everything works so far :smile:. It is time to get the backend up and running
 ## 4.2 - Start up the Redis backend
 
 
-The application uses Redis to store its data. It writes its data to a single Redis Master instance and reads data from multiple Redis Slave instances.
+The application uses Redis to store its data. It writes its data to a single _Redis Master_ instance. Since in our case, we will test resilience but not performance, we will not instantiate a _Redis Slave Service_.
 
-> Nota: the Redis backend service is compsed of two components:
-> * the *Redis Master Service* will serve all the write requests, and is running on one single Pod on one single Node, because the Redis technology cannot easily have multiple Master writing for the *same* data chunk;
-> * the *Redis Slave Service* will serve all the read requests, and can be replicated over multiple Pods (on multiple Nodes): each replica holds a copy of the Master database, and can take off teh load for serving read requests.
-> * the *Redis Slave Service* can then be resilient and scalable. However, the *Redis Master Service* will still be *Single Point of Failure* (SPOF) because it cannot be distributed over multiple replicas.
+> Nota: the Redis backend service is composed of two components:
+> * the *Redis Master Service* is running on one single Pod on one single Node, because the Redis technology cannot easily have multiple Master writing for the *same* data chunk.
+> * the *Redis Master Service* can can either serve all the requests (writes and reads), or it can be seconded by a *Redis Slave Service* which will serve all the read requests
+> * the *Redis Slave Service* can be replicated over multiple Pods (on multiple Nodes): each replica holds a copy of the Master database, and can take off teh load for serving read requests: it is resilient and scalable.
+> * However, even in such a case, the *Redis Master Service* will still be *Single Point of Failure* (SPOF) because it cannot be distributed over multiple replicas.
 
-
-### 4.2.1 - Creating the Redis Master _Deployment_ and _Service_
 
 The manifest files, included below, specify a _Deployment_ and a _Service_ that runs a single replica _Redis Master Service_.
 
@@ -413,139 +441,6 @@ If you go the browser, it should look like that:
 ![alt txt](./images/tuto-4-frontend+redis.png "Frontend with REdis backend, showing the number of visitors")
 
 
-### 4.2.2 - Creating the *Redis Slave Deployment*
-
-
-We will setup the Redis Slave Deployment and Service by applying the corresponding YAML configuration files. The Redis Slave Deployment ask for 2 replicas to be created:
-
-File 1: `./app-guestbook/redis-slave-deployment.yaml`
-
-```yaml
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
-kind: Deployment
-metadata:
-  name: redis-slave
-  labels:
-    app: redis
-  spec:
-   selector:
-     matchLabels:
-       app: redis
-       role: slave
-       tier: backend
-   replicas: 2
-   template:
-     metadata:
-       labels:
-         app: redis
-         role: slave
-         tier: backend
-     spec:
-       containers:
-       - name: slave
-         image: gcr.io/google_samples/gb-redisslave:v3
-         resources:
-           requests:
-             cpu: 100m
-             memory: 100Mi
-         env:
-         - name: GET_HOSTS_FROM
-           value: dns
-           # Using `GET_HOSTS_FROM=dns` requires your cluster to
-           # provide a dns service. As of Kubernetes 1.3, DNS is a built-in
-           # service launched automatically. However, if the cluster you are using
-           # does not have a built-in DNS service, you can instead
-           # access an environment variable to find the master
-           # service's host. To do so, comment out the 'value: dns' line above, and
-           # uncomment the line below:
-           # value: env
-         ports:
-         - containerPort: 6379
-```
-
-File 2: `./app-guestbook/redis-slave-service.yaml`
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis-slave
-  labels:
-    app: redis
-    role: slave
-    tier: backend
-spec:
-  ports:
-  - port: 6379
-  selector:
-    app: redis
-    role: slave
-    tier: backend
-```
-
-Let's apply these files to run the *Redis Slave Service*:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/redis-slave-deployment.yaml
-deployment.apps/redis-slave created
-tuto@laptop:~/learn-kubernetes$ kubectl apply -f ./app-guestbook/redis-slave-service.yaml
-service/redis-slave created
-```
-
-Query the list of _Pods_ to verify that the _Redis Slave Pods_ are running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -o wide
-NAME                                      READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
-hello-part4-deployment-6695fc768f-4bgrn   1/1     Running   0          25m     10.244.3.3   k8s-tuto-worker    <none>           <none>
-hello-part4-deployment-6695fc768f-x9gdh   1/1     Running   0          25m     10.244.1.5   k8s-tuto-worker2   <none>           <none>
-hello-part4-deployment-6695fc768f-xkbbg   1/1     Running   0          25m     10.244.3.4   k8s-tuto-worker    <none>           <none>
-redis-master-76fbb9b7bf-wk7hj             1/1     Running   0          94s     10.244.3.5   k8s-tuto-worker    <none>           <none>
-redis-slave-5bbbc574d6-sn5bz              1/1     Running   0          66s     10.244.1.6   k8s-tuto-worker2   <none>           <none>
-redis-slave-5bbbc574d6-z98gk              1/1     Running   0          66s     10.244.3.6   k8s-tuto-worker    <none>           <none>
-```
-
-Query the list of _Services_ to verify that the *Redis slave Service* is running:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get services
-NAME                  TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
-hello-part4-service   NodePort    10.107.15.5     <none>        80:31122/TCP   25m
-kubernetes            ClusterIP   10.96.0.1       <none>        443/TCP        26h
-redis-master          ClusterIP   10.100.71.111   <none>        6379/TCP       2m
-redis-slave           ClusterIP   10.98.115.42    <none>        6379/TCP       70m
-```
-
-And before we move to the resilience test, let's check how the labels can enable us to target some of the resources of the application:
-
-```bash
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l tier=frontend -o wide
-NAME                                      READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
-hello-part4-deployment-6695fc768f-4bgrn   1/1     Running   0          3m18s   10.244.3.3   k8s-tuto-worker    <none>           <none>
-hello-part4-deployment-6695fc768f-x9gdh   1/1     Running   0          3m18s   10.244.1.5   k8s-tuto-worker2   <none>           <none>
-hello-part4-deployment-6695fc768f-xkbbg   1/1     Running   0          3m18s   10.244.3.4   k8s-tuto-worker    <none>           <none>
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l tier=backend -o wide
-NAME                            READY   STATUS    RESTARTS   AGE    IP           NODE               NOMINATED NODE   READINESS GATES
-redis-master-76fbb9b7bf-wk7hj   1/1     Running   0          2m5s   10.244.3.5   k8s-tuto-worker    <none>           <none>
-redis-slave-5bbbc574d6-sn5bz    1/1     Running   0          97s    10.244.1.6   k8s-tuto-worker2   <none>           <none>
-redis-slave-5bbbc574d6-z98gk    1/1     Running   0          97s    10.244.3.6   k8s-tuto-worker    <none>           <none>
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l component=webserver -o wide
-NAME                                      READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
-hello-part4-deployment-6695fc768f-4bgrn   1/1     Running   0          5m26s   10.244.3.3   k8s-tuto-worker    <none>           <none>
-hello-part4-deployment-6695fc768f-x9gdh   1/1     Running   0          5m26s   10.244.1.5   k8s-tuto-worker2   <none>           <none>
-hello-part4-deployment-6695fc768f-xkbbg   1/1     Running   0          5m26s   10.244.3.4   k8s-tuto-worker    <none>           <none>
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l component=redis-master -o wide
-NAME                            READY   STATUS    RESTARTS   AGE     IP           NODE              NOMINATED NODE   READINESS GATES
-redis-master-76fbb9b7bf-wk7hj   1/1     Running   0          4m13s   10.244.3.5   k8s-tuto-worker   <none>           <none>
-
-tuto@laptop:~/learn-kubernetes$ kubectl get pods -l component=redis-slave -o wide
-NAME                           READY   STATUS    RESTARTS   AGE     IP           NODE               NOMINATED NODE   READINESS GATES
-redis-slave-5bbbc574d6-sn5bz   1/1     Running   0          4m15s   10.244.1.6   k8s-tuto-worker2   <none>           <none>
-redis-slave-5bbbc574d6-z98gk   1/1     Running   0          4m15s   10.244.3.6   k8s-tuto-worker    <none>           <none>
-```
 
 
 ## 4.5 - Testing the resilience

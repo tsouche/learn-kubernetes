@@ -20,6 +20,16 @@ spec:
         tier: frontend
         component: webserver
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: component
+                operator: In
+                values:
+                - webserver
+            topologyKey: "kubernetes.io/hostname"
       containers:
       - name: app-part4
         image: tsouche/learn-kubernetes:part4
