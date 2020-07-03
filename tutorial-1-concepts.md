@@ -143,38 +143,47 @@ But for the sake of simplicity, we will show it like this:
 ### 2.5 - Assembling everything to build a cluster
 
 
-![alt txt](./images/tuto-1-k8s-overview-00.png "cluster overview")
+When you deploy a _Master_ and several _Workers, you actually get a Kubeneretes cluster:
+
 ![alt txt](./images/tuto-1-k8s-overview-01.png "cluster overview")
-![alt txt](./images/tuto-1-k8s-overview-02.png "cluster overview")
-![alt txt](./images/tuto-1-k8s-overview-03.png "cluster overview")
 
-When you deploy applications on Kubernetes, you tell the _Master_ to start the application _Pods_, and each _Pod_ regroups one or several containers. The _Master_ schedules the _Pods_' containers to run on the cluster's _Nodes_. The _Nodes_ communicate with the _Master_ using the Kubernetes API, which the _Master_ exposes. End users also use the Kubernetes API directly to interact with the cluster.
-* several ***Pods*** which are groups of containers which compose an application: Kubernetes enable to run an application by its ability to orchestrates pods on the cluster's _Nodes_.
+If you do nothing more, this is no very useful: you now have a cluster standing still and doing... nothing. You actually need to give instructions to the _Master_, which will then take actions towards the _Workers_ in order exectute.
 
+The simplest way to interact with the cluster is to use `kubectl`: it is a CLI tool which will take your commands as input, and translate them into valid requests to the _API Server_: it will also translate into a human readable format the answers received from the _API Server_. This namely is a classical way to provision an application on the cluster.
 
 
+![alt txt](./images/tuto-1-k8s-overview-00.png "cluster overview")
 
 
+So let's now look at what you need to do in order to deploy an application on Kubernetes.
 
 
-
-### 2.7 - How an application 'works' on Kubernetes
-
+### 2.7 - How do I deploy an application on Kubernetes
 
 
-***Pods***
+#### 2.7.1 - Pods
 
 Kubernetes executes isolated application containers as its default, native mode of execution, as opposed to processes and traditional operating-system packages. Not only are application containers isolated from each other, but they are also isolated from the hosts on which they execute, which is critical to decoupling management of individual applications from each other and from management of the underlying cluster physical/virtual infrastructure.
 
-Kubernetes provides ***Pods*** that can host multiple containers and storage volumes as its fundamental execution primitive in order to facilitate packaging a single application per container, decoupling deployment-time concerns from build-time concerns, and migration from physical/virtual machines. The _Pod_ primitive is key to glean the primary benefits of deployment on modern cloud platforms, such as Kubernetes.
+Kubernetes provides *Pods* that can host **multiple** containers and storage volumes as its fundamental execution primitive in order to facilitate packaging a single application per container, decoupling deployment-time concerns from build-time concerns, and migration from physical/virtual machines. The _Pod_ primitive is key to glean the primary benefits of deployment on modern cloud platforms, such as Kubernetes.
 
-
+![alt txt](./images/tuto-1-pod-overview.png "Various Pods")
 
 We know that an application is cut in small pieces (micro-services), and that each small piece is instantiated with a _Pod_. We still need to understand how the _Pods_ are running on the _Nodes_, and what other Kubernetes mechanisms are actioned in order to get an application running.
 
+First let's follow the path of instruction wichi will result in deploying a _Pod_ on the cluster:
+
+![alt txt](./images/tuto-1-k8s-overview-03.png "cluster overview")
+
+As you can see when you follow the red arrow, you will first use `kubectl` to send an order (actually, you will describe a _desired state_) to the Master: `kubectl` will formulate an request to the API server, which will trigger the _Controller Manager_, which in turn will start a _Controller_. This is it: you have done your part of the work.
+
+The _Controller_ will now tke over and take actions - following the green arrow - to get to the _desired state_: it will send request to the _Scheduler_ which will look for _Nodes_ with enough available capacity to host a new _Pod_ and it will send the request - via the _API Server_ and the _proxy_ - to the _Node's kubelet_, which will ultimately decide to accept or not the request, and will execute it: the _kubelet_ will isntruct the _Container runtime_ to load the images and start the containers composing that _Pod_. And as many such requests will be sent from the _Scheduler_ to multiple _Kubelets_ as necessary for the cluster to deliver the promise: _actual state = desired state_.
+
+### 2.7.2 - From Pods to an Application
+
 This requires that we explain a _Deployment_, a _Service_ and an _Ingress_:
 
-![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-2.png "Expose a micro-service running on Kubernetes")
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-02.png "Expose a micro-service running on Kubernetes")
 
 * _Pods_ are grouped in a _Deployment_, in order to have one or multiple replicas of the same piece of software (to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ - or the underlying _Node_- would fail).
 * To reach these _Pods_ and make it visible from the whole cluster and even outside, we need to activate a _Service_ which will expose an IP address and a port to the cluster, and route the incoming traffic to the _Pods_: other applications will then be able to reach the _Pods_.
