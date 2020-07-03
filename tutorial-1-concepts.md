@@ -67,20 +67,16 @@ The Kubernetes project is committed to the following (aspirational) design ideal
 ### 2.3 - Architecture
 
 A running Kubernetes cluster contains:
-* one or several ***Master(s)*** which operate the cluster control plane (AKA Master), and
-* several ***Nodes*** which communicate with and are managed by the _Master_ thanks to the Kubernetes REST APIs.
-* several ***Pods*** which are groups of containers which compose an application: Kubernetes enable to run an application by its ability to orchestrates pods on the cluster's _Nodes_.
+* one or several ***Master Node(s)*** which operate the cluster control plane (AKA Master), and
+* several ***Worker Nodes*** which communicate with and are managed by the _Master_ thanks to the Kubernetes REST APIs.
 
-![alt txt](./images/tuto-1-k8s-architecture.png "cluster overview")
+A Kubernetes cluster can be deployed on either physical or virtual machines. In our case, because we do not aim at building a production environment but we only need it for education, Part 2 shows how to deploy a Kubernetes cluster by simulating every _Node_ with Docker container on your local machine, and then running all Kubernetes components as *Docker containers inside the _Nodes_ Docker containers*: it is good enough for educational purposes, but it obviously is not representative of a 'real' cluster (which typically gathers hundreds of physical servers): in the real world, a ***Node*** is a VM or a physical computer.
 
-A ***Node*** is a VM or a physical computer that serves as a worker machine in a Kubernetes cluster. Each _Node_ has a `Kubelet`, which is an agent for managing the _Node_ and communicating with the _Master_. The _Node_ should also have tools (a **container runtime**) for handling container operations, such as `Docker` or `rkt`. A Kubernetes cluster that handles production traffic should have a minimum of three _Nodes_.
+#### Looking into the _Master Node_
 
-When you deploy applications on Kubernetes, you tell the _Master_ to start the application _Pods_, and each _Pod_ regroups one or several containers. The _Master_ schedules the _Pods_' containers to run on the cluster's _Nodes_. The _Nodes_ communicate with the _Master_ using the Kubernetes API, which the _Master_ exposes. End users can also use the Kubernetes API directly to interact with the cluster.
-
-A Kubernetes cluster can be deployed on either physical or virtual machines. In our case, Part 2 shows how to deploy a Kubernetes cluster by simulating every _Node_ with Docker container on your local machine, and then running all Kubernetes components as *Docker containers inside the _Nodes_ Docker containers*: it is good enough for educational purposes, but it obviously is not representative of a 'real' cluster (which typically gathers hundreds of physical servers).
+![alt txt](./images/tuto-1-k8s-master.png "The Master Node")
 
 
-### 2.4 - Cluster control plane (AKA Master)
 
 The ***Master*** is responsible for managing the cluster, and as such is the control plane of the cluster. The _Master_ coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates.
 
@@ -116,8 +112,16 @@ The main logical components of the control plane are:
 One of the most important notion to acquire is how to properly describe a *'desired state'* and to feed it to the _Master_, so that the _Master_ will do all the job for you. Most resources contain metadata, including labels and annotations, fully elaborated desired state (spec), including default values, and observed state (status). These metadata are typically described in YAML files, which are very useful to actually manage a Kubernetes cluster.
 
 
-### 2.5 - The Kubernetes Node
+#### Looking into the _Worker Node_
 
+ Each _Node_ carries several Kubernetes components which are core to its functionning :
+* a `Kubelet`, which is the agent managing the _Node_ (deciding to deploy a _Pod_ on the _Node_ and allocating resources to it) and communicating with the _Master_,
+* a Container runtime engine - which very often is Docker (and in our specific case, it is Docker-in-Docker) - on which e _Pods_ run;
+* a Kube-proxy which enables communication between all the _Nodes_ of the cluster (the _Master Node(s)_ and the _Worker Nodes_).
+The _Node_ should also have tools (a **container runtime**) for handling container operations, such as `Docker` or `rkt`. A Kubernetes cluster that handles production traffic should have a minimum of three _Nodes_.
+
+When you deploy applications on Kubernetes, you tell the _Master_ to start the application _Pods_, and each _Pod_ regroups one or several containers. The _Master_ schedules the _Pods_' containers to run on the cluster's _Nodes_. The _Nodes_ communicate with the _Master_ using the Kubernetes API, which the _Master_ exposes. End users also use the Kubernetes API directly to interact with the cluster.
+* several ***Pods*** which are groups of containers which compose an application: Kubernetes enable to run an application by its ability to orchestrates pods on the cluster's _Nodes_.
 
 The Kubernetes **node** runs the services necessary to host application containers and be managed from the master systems:
 
@@ -140,7 +144,19 @@ The Kubernetes **node** runs the services necessary to host application containe
   The service abstraction provides a way to group pods under a common access policy (e.g., load-balanced). The implementation of this creates a virtual IP which clients can access and which is transparently proxied to the pods in a Service. Each node runs a `kube-proxy` process which programs iptables rules to trap access to service IPs and redirect them to the correct backends. This provides a highly-available load-balancing solution with low performance overhead by balancing client traffic from a _Pod_ on that same _Node_.
   Service endpoints are found primarily via DNS.
 
-### 2.6 - Add-ons
+#### Assembling everythin to build a cluster
+
+![alt txt](./images/tuto-1-k8s-overview-00.png "cluster overview")
+![alt txt](./images/tuto-1-k8s-overview-01.png "cluster overview")
+![alt txt](./images/tuto-1-k8s-overview-02.png "cluster overview")
+
+
+
+
+
+
+
+#### Add-ons
 
 Contrarily to Kubernetes native components, ***Addons*** use Kubernetes resources (DaemonSet , Deployment , etc) to implement cluster features. Because these are providing cluster-level features, namespaced resources for addons belong within the kube-system namespace. In other words, the add-ons are truely part of the *system* but they are managed almost like any application you would deploy on Kubernetes.
 
@@ -152,10 +168,6 @@ Let's mention few add-ons
 * ### Web UI (the Dashboard)
   Dashboard is a general purpose, web-based UI for Kubernetes clusters. It allows users to manage and troubleshoot applications running in the cluster, as well as the cluster itself.
   The Dashboard is the UI version of `kubectl`: it only passes API calls to the Master, and restitutes the answers in a graphical format. One could also say that `kubectl` is CLI version of the Dashboard ;-).
-* ### Container Resource Monitoring
-  Container Resource Monitoring records generic time-series metrics about containers in a central database, and provides a UI for browsing that data.
-* ### Cluster-level Logging
-  A cluster-level logging mechanism is responsible for saving container logs to a central log store with search/browsing interface.
 
 
 ### 2.7 - How an application 'works' on Kubernetes
