@@ -59,13 +59,31 @@ Kubernetes is a production-grade, open-source infrastructure for the deployment 
 
 Kubernetes is primarily targeted at applications composed of multiple containers. It therefore groups containers using ***Pods*** and ***Labels*** into tightly coupled and loosely coupled formations for easy management and discovery.
 
-### 2.2 - Overall architecture
+### 2.1 - Overall architecture
 
 A running Kubernetes cluster contains:
 * one or several ***Master Node(s)*** which operate the cluster control plane (AKA Master), and
 * several ***Worker Nodes*** which communicate with and are managed by the _Master_ thanks to the Kubernetes REST APIs.
 
 A Kubernetes cluster can be deployed on either physical or virtual machines. In our case, because we do not aim at building a production environment but we only need it for education, Part 2 shows how to deploy a Kubernetes cluster by simulating every _Node_ with Docker container on your local machine, and then running all Kubernetes components as *Docker containers inside the _Nodes_ Docker containers*: it is good enough for educational purposes, but it obviously is not representative of a 'real' cluster (which typically gathers hundreds of physical servers): in the real world, a ***Node*** is a VM or a physical computer.
+
+#### 2.2 - the *Pod*, atomic unit of an application
+
+Kubernetes executes isolated application containers as its default, native mode of execution, as opposed to processes and traditional operating-system packages. Not only are application containers isolated from each other, but they are also isolated from the hosts on which they execute, which is critical to decoupling management of individual applications from each other and from management of the underlying cluster physical/virtual infrastructure.
+
+In order to fully beenfit from the very powerful concepts of Kubernetes, the application must be designed and developped according the specific patterns: it should typically be organised in micro-services, which each have their own life-cycle (independant one from the other) and their technologies (i.e. use the best programming language, bus, event or database technologies wth regard to the specific focus of this micro-service). You will see very often in the litterature that the application must respect the ***12 factors***, which list typical guidelines that should be respected in order to fully benefit from a micro-service approach (ie. there is no magic: it is easy to mess up with micro-services...).
+
+When you deploy an application on a cluster, Kubernetes creates a **Pod** to host your application instance. A _Pod_ is a Kubernetes abstraction that represents a group of one or more application containers, and some shared resources for those containers. Those resources include:
+
+* Shared storage, as **Volumes**
+* Networking, as a unique **cluster IP address**
+* Information about how to run each container, such as the container image version or specific ports to use...
+
+![alt txt](./images/tuto-1-pod-overview.png "The logical path from a Pod, to the Service to the Ingress")
+
+A _Pod_ models an application-specific "logical host" and can contain different application containers which are relatively tightly coupled. For example, a _Pod_ might include both the container with your node.js app as well as a different container that feeds the data to be published by the node.js webserver. The containers in a _Pod_ share an IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.
+
+_Pods_ are the **atomic unit** on the Kubernetes platform. When we create a Deployment on Kubernetes, that Deployment creates Pods with containers inside them (as opposed to creating containers directly).
 
 
 ### 2.3 - Looking into the _Master Node(s)_
@@ -158,86 +176,70 @@ The simplest way to interact with the cluster is to use `kubectl`: it is a CLI t
 So let's now look at what you need to do in order to deploy an application on Kubernetes.
 
 
-### 2.7 - How do I deploy an application on Kubernetes
+### 2.6 - How do I deploy an application on Kubernetes
 
 
-#### 2.7.1 - Pods
-
-Kubernetes executes isolated application containers as its default, native mode of execution, as opposed to processes and traditional operating-system packages. Not only are application containers isolated from each other, but they are also isolated from the hosts on which they execute, which is critical to decoupling management of individual applications from each other and from management of the underlying cluster physical/virtual infrastructure.
-
-Kubernetes provides *Pods* that can host **multiple** containers and storage volumes as its fundamental execution primitive in order to facilitate packaging a single application per container, decoupling deployment-time concerns from build-time concerns, and migration from physical/virtual machines. The _Pod_ primitive is key to glean the primary benefits of deployment on modern cloud platforms, such as Kubernetes.
-
-![alt txt](./images/tuto-1-pod-overview.png "Various Pods")
+#### 2.6.1 - Schedule a _Pod_
 
 We know that an application is cut in small pieces (micro-services), and that each small piece is instantiated with a _Pod_. We still need to understand how the _Pods_ are running on the _Nodes_, and what other Kubernetes mechanisms are actioned in order to get an application running.
 
-First let's follow the path of instruction wichi will result in deploying a _Pod_ on the cluster:
+First let's follow the path of instruction wich will result in deploying one _Pod_ on the cluster:
 
-![alt txt](./images/tuto-1-k8s-overview-03.png "cluster overview")
+![image](./images/tuto-1-k8s-overview-03.png "cluster overview")
 
 As you can see when you follow the red arrow, you will first use `kubectl` to send an order (actually, you will describe a _desired state_) to the Master: `kubectl` will formulate an request to the API server, which will trigger the _Controller Manager_, which in turn will start a _Controller_. This is it: you have done your part of the work.
 
 The _Controller_ will now tke over and take actions - following the green arrow - to get to the _desired state_: it will send request to the _Scheduler_ which will look for _Nodes_ with enough available capacity to host a new _Pod_ and it will send the request - via the _API Server_ and the _proxy_ - to the _Node's kubelet_, which will ultimately decide to accept or not the request, and will execute it: the _kubelet_ will isntruct the _Container runtime_ to load the images and start the containers composing that _Pod_. And as many such requests will be sent from the _Scheduler_ to multiple _Kubelets_ as necessary for the cluster to deliver the promise: _actual state = desired state_.
 
-### 2.7.2 - From Pods to an Application
 
-This requires that we explain a _Deployment_, a _Service_ and an _Ingress_:
+### 2.6.2 - From Pods to an Application
 
-![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-02.png "Expose a micro-service running on Kubernetes")
+It is great to have a _Pod_ scheduled on a _Node_, but how does this translate into having an Application actually running on a Kubernetes cluster ?
 
-* _Pods_ are grouped in a _Deployment_, in order to have one or multiple replicas of the same piece of software (to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ - or the underlying _Node_- would fail).
-* To reach these _Pods_ and make it visible from the whole cluster and even outside, we need to activate a _Service_ which will expose an IP address and a port to the cluster, and route the incoming traffic to the _Pods_: other applications will then be able to reach the _Pods_.
-* The _Deployment_ is focused on how the Pods should be deployed (affinity, anti-affinity, minimum resources available, etc etc). The _Service_ is focused on how the group od _Pods_ should be reached.
-* Finally, when we want to make the _Service_ publicly visible from the outside of the cluster, reachable via a known URL, then you need to activate an _Ingress_: its duty is to establish a public routing/loadbalancing/... from the outside to the application.
+![image](./images/tuto-1-from-pod-to-service-to-ingress-01.png "a Pod is available to be scheduled on the cluster")
+
+This requires that we explain a _Deployment_, a _Service_ and an _Ingress_: let's start from a _Pod_ and follow the various steps required to expose an application:
+
+1. _Pods_ are scheduled by a _Deployment_ (a _Deployment_ is typically a _Controller_ running in the _Master Node_), in order to have one or multiple replicas of the same piece of software (to handle more load than one single replica could handle, but also to bring resilience in case a _Pod_ - or the underlying _Node_- would fail).
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-02.png "a Deployment schedules the Pods to reach the \"desired state\"")
+Once these _Pods_ are scheduled by the _Deployment_, they can handle requests coming from inside the cluster: however the consummer need to know the ID of the _Deployment_ in order to reach the _Pods_ (ie. the cluster DNS will resolve the connection request with the _Deployment ID_, load-balancing requests to the various _Pods_ belonging to the _Deployment_). The _Deployment_ is focused on how the Pods should be deployed (affinity, anti-affinity, minimum resources available, etc etc).
+
+2. To make it much easier to reach these _Pods_ and expose them to the whole cluster and even outside, we need to activate a _Service_ which will link an IP address / port to the _Deployment_, and route to it the incoming traffic: other applications will then be able to reach the _Pods_.
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-03.png "a Service will expose the Pods")
+The _Service_ is focused on how the group of _Pods_ should be reached.
+
+3.  Finally, when we want to make the _Service_ publicly visible from the outside of the cluster, reachable via a fixed URL, then you need to activate an _Ingress_: its duty is to establish a public routing/loadbalancing/... from the outside to the application.
+![alt txt](./images/tuto-1-from-pod-to-service-to-ingress-05.png "an Ingress will expose the Pods to the outside")
 
 So let's drill a bit into these mechanisms.
 
-#### 2.7.1 - the *Pod*, atomic unit of an application
 
-When you deploy an application on a cluster, Kubernetes creates a **Pod** to host your application instance. A _Pod_ is a Kubernetes abstraction that represents a group of one or more application containers, and some shared resources for those containers. Those resources include:
-* Shared storage, as **Volumes**
-* Networking, as a unique **cluster IP address**
-* Information about how to run each container, such as the container image version or specific ports to use...
+### 2.6.3 - the _Deployment_ in more detail
 
-![alt txt](./images/tuto-1-pod-overview-1.png "a typical Pod")
-
-A _Pod_ models an application-specific "logical host" and can contain different application containers which are relatively tightly coupled. For example, a _Pod_ might include both the container with your node.js app as well as a different container that feeds the data to be published by the node.js webserver. The containers in a _Pod_ share an IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.
-
-![alt txt](./images/tuto-1-pod-overview-2.png "The logical path from a Pod, to the Service to the Ingress")
-
-_Pods_ are the **atomic unit** on the Kubernetes platform. When we create a Deployment on Kubernetes, that Deployment creates Pods with containers inside them (as opposed to creating containers directly).
-
-Each _Pod_ is tied to the _Node_ where it is scheduled, and remains there until termination (according to restart policy) or deletion. In case of a _Node_ failure, identical _Pods_ are scheduled on other available _Nodes_ in the cluster.
-
-
-### 2.7.2 - Deployment
-
-A _Deployment_ will enable you to instantiate a group of _Pods_ in order to garantee that the application will meet the expected performance, availability, resilience... Namely, you will describe to the Deployment the _Desired State_ (let's say that we want 3 replicas, all on different _Nodes_ and with enough resources), and it will trigger various Controllers and the Scheduler in order to actually deploy the Pod on as many _Nodes_ as required to meet the target.
+A _Deployment_ will enable you to instantiate a group of _Pods_ in order to garantee that the application will meet the expected performance, availability, resilience... Namely, you will describe to the _Deployment_ the _Desired State_ (let's say that we want 3 replicas, all on different _Nodes_ and with enough resources), and it will trigger the _Scheduler_ in order to actually deploy the _Pod_ on as many _Nodes_ as required to meet the target.
 
 By changing the description of the _Desired state_, you also trigger the _Deployment Controller_ to changes the _Actual state_ to get the new _Desired state_ (scale up, scale down, upgrade version...) at a controlled rate. Also, if you instruct the _Deployment_ so, it will remove existing _Pods_ and release all their resources (to make them available to other _Deployments_).
 
-![alt txt](./images/tuto-1-pod-overview-1.png "A Deployment of several Pods, exposed by a Service towards an Ingress")
-
 The following are typical use cases for Deployments:
 
-* Create a Deployment to rollout a ReplicaSet (= a Set of _Pods_). The ReplicaSet creates _Pods_ in the background. Check the status of the rollout to see if it succeeds or not.
-* Scale up the Deployment to facilitate more load, or scale it down if the load decreases.
-* Upgrade the version of the applicaton, by changing the version of the Pods: changing the Docker image which should be used for the _Pod_. This means that the Deployment will create a new ReplicaSet and the Deployment manages moving the Pods from the old ReplicaSet to the new one at a controlled rate.
-* Rollback to an earlier Deployment revision if the current state of the Deployment is not stable.
-* Pause the Deployment to apply multiple fixes to its Pod template and then resume it to start a new rollout.
-* Clean up older ReplicaSets that you don't need anymore.
+* Create a _Deployment_ to rollout a _ReplicaSet_ (= a Set of _Pods_). The _ReplicaSet_ creates _Pods_ in the background. Check the status of the rollout to see if it succeeds or not.
+* Scale up the _Deployment_ to facilitate more load, or scale it down if the load decreases.
+* Upgrade the version of the applicaton, by changing the version of the _Pods_: changing the Docker image which should be used for the _Pod_. This means that the _Deployment_ will create new _Pods_ and terminate the old _Pods_ at a controlled rate.
+* Rollback to an earlier _Deployment_ revision if the current state of the _Deployment_ is not stable.
+* Pause the _Deployment_ to apply multiple fixes to its Pod template and then resume it to start a new rollout.
+* Clean up older _Deployment_ that you don't need anymore.
 
-### 2.7.3 - Service
+### 2.6.4 - Service
 
 Kubernetes _Pods_ are mortal. They are born and when they die, they are not resurrected. If you use a _Deployment_ to run your app, it can create and destroy _Pods_ dynamically in order to meet the objectives as describe in the _Desired state_. Each _Pod_ gets its own IP address, however in a _Deployment_, the set of _Pods_ running in one moment in time could be different from the set of _Pods_ running that application a moment later.
 
 This leads to a problem: if some set of _Pods_ (call them “backends”) provides functionality to other _Pods_ (call them “frontends”) inside your cluster, how do the frontends find out and keep track of which IP address to connect to, so that the frontend can use the backend part of the workload? The answer is "setup a _Service-".
 
-The _Service_ will expose a _Deployment_ to the cluster `ENDPOINT` (the IP address which is shared for all services) and a port dedicated to each _Deployment_ (most often a `NODE_PORT`) : the _Service_ will forward and load-balance a request reaching `ENDPOINT:NODE_PORT` towards the _Pods_ which belong to the _Deployment_. You will see how to do it in Part 3 of the tutorial.
+The _Service_ will expose a _Deployment_ to the cluster `ENDPOINT` (the IP address which is shared for all services) and a port dedicated to each _Deployment_ (most often a `NODE_PORT`) : the _Service_ will forward and load-balance a request reaching `ENDPOINT:NODE_PORT` towards the _Pods_ which belong to the _Deployment_. You will see how to do it in [Part 3](./tutorial-3-simple-app.md) of the tutorial.
 
 This is enough for most internal exposition requirements, but it is clearly not suited for exposing the application to the outside world.
 
-### 2.7.4 - Ingress
+### 2.6.5 - Ingress
 
 And this is why Kubernetes offers the _Ingress_ feature: setting up an _Ingress_ enable to route the traffic from `ENDPOINT:NODE_PORT` to an externally visible `URL/path` so that it is easy for the external users to access the application. And in our tutorial, we will typically establish a pulic routing towards... `localhost`, the local machine on which we will run the tutorial :smile:.
 
